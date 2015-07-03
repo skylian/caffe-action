@@ -53,6 +53,13 @@ class Solver {
   virtual void RestoreSolverState(const SolverState& state) = 0;
   void DisplayOutputBlobs(const int net_id);
 
+#ifdef USE_MPI
+    void SyncGradient();
+    void SyncData();
+    void SyncOutput(shared_ptr<Net<Dtype> > net);
+    Dtype SyncLoss(Dtype loss);
+#endif
+
   SolverParameter param_;
   int iter_;
   int current_step_;

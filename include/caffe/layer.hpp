@@ -10,6 +10,7 @@
 #include "caffe/layer_factory.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/device_alternate.hpp"
+#include "../../../../../../home/alex/.clion10/system/cmake/generated/4085dc62/4085dc62/Release/include/caffe/proto/caffe.pb.h"
 
 namespace caffe {
 
@@ -42,6 +43,13 @@ class Layer {
           blobs_[i]->FromProto(layer_param_.blobs(i));
         }
       }
+
+      #ifdef USE_MPI
+      //check whether the parallel type is supported
+      if (!AllowParaType(param.para_type())){
+        LOG(FATAL)<<"Parallelization type "<<param.para_type()<<" not supported!";
+      }
+      #endif
     }
   virtual ~Layer() {}
 
@@ -284,6 +292,16 @@ class Layer {
     }
     param_propagate_down_[param_id] = value;
   }
+
+  #ifdef USE_MPI
+  /**
+   * @brief Checks whether the layer accepts specifed parallel type
+   *
+   * If not supported, will halt the program with hints
+   */
+  virtual inline bool AllowParaType(ParaType para_type){return para_type == DISTRIBUTED;}
+  inline ParaType para_type() {return layer_param_.para_type();}
+  #endif
 
 
  protected:

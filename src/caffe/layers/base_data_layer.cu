@@ -21,6 +21,10 @@ void BasePrefetchingDataLayer<Dtype>::Forward_gpu(
     caffe_copy(prefetch_label_.count(), prefetch_label_.cpu_data(),
         top[1]->mutable_gpu_data());
   }
+#ifdef USE_MPI
+  //advance (all_rank - (my_rank+1)) mini-batches to be ready for next run
+  BaseDataLayer<Dtype>::OffsetCursor(top[0]->num() * (Caffe::MPI_all_rank() - 1));
+#endif
   // Start a new prefetch thread
   CreatePrefetchThread();
 }

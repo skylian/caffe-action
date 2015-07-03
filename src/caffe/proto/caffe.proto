@@ -180,7 +180,7 @@ message SolverParameter {
   }
   optional SolverMode solver_mode = 17 [default = GPU];
   // the device_id will that be used in GPU mode. Use device_id = 0 in default.
-  optional int32 device_id = 18 [default = 0];
+  repeated int32 device_id = 18 ;
   // If non-negative, the seed with which the Solver will initialize the Caffe
   // random number generator -- useful for reproducible results. Otherwise,
   // (and by default) initialize using a seed derived from the system clock.
@@ -266,10 +266,15 @@ message ParamSpec {
   optional float decay_mult = 4 [default = 1.0];
 }
 
+enum ParaType{
+  DISTRIBUTED = 0;
+  GATHER = 1;
+}
+
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 137 (last added: reduction_param)
+// LayerParameter next available layer-specific ID: 138 (last added: para_type)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -309,6 +314,9 @@ message LayerParameter {
 
   // Parameters shared by loss layers.
   optional LossParameter loss_param = 101;
+
+  // Parameters for parallel type
+  optional ParaType para_type = 137 [default=DISTRIBUTED];
 
   // Layer type-specific parameters.
   //
@@ -895,11 +903,6 @@ message WindowDataParameter {
   optional string root_folder = 13 [default = ""];
 }
 
-// Message that stores parameters used by MapRegressionLossLayer
-message MapRegressionParameter {
-  //Specify the beta in the loss function
-  optional float beta = 1 [default = 1.0];
-}
 
 message SPPParameter {
   enum PoolMethod {

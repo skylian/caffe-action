@@ -39,6 +39,10 @@ void BasePrefetchingDataLayer<Dtype>::LayerSetUp(
   if (this->output_labels_) {
     this->prefetch_label_.mutable_cpu_data();
   }
+#ifdef USE_MPI
+  //advance (my_rank) mini-batches to be ready for first run
+  BaseDataLayer<Dtype>::OffsetCursor(top[0]->num() * Caffe::MPI_my_rank());
+#endif
   DLOG(INFO) << "Initializing prefetch";
   this->CreatePrefetchThread();
   DLOG(INFO) << "Prefetch initialized.";
@@ -74,6 +78,12 @@ void BasePrefetchingDataLayer<Dtype>::Forward_cpu(
     caffe_copy(prefetch_label_.count(), prefetch_label_.cpu_data(),
                top[1]->mutable_cpu_data());
   }
+
+#ifdef USE_MPI
+  //advance (all_rank - (my_rank+1)) mini-batches to be ready for next run
+  BaseDataLayer<Dtype>::OffsetCursor(top[0]->num() * (Caffe::MPI_all_rank() - 1));
+#endif
+
   // Start a new prefetch thread
   DLOG(INFO) << "CreatePrefetchThread";
   CreatePrefetchThread();

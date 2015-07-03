@@ -10,7 +10,7 @@ namespace caffe {
 shared_ptr<Caffe> Caffe::singleton_;
 
 // random seeding
-int64_t cluster_seedgen(void) {
+int64_t cluster_seedgen(bool sync) {
   int64_t s, seed, pid;
   FILE* f = fopen("/dev/urandom", "rb");
   if (f && fread(&seed, 1, sizeof(seed), f) == sizeof(seed)) {
@@ -31,12 +31,42 @@ int64_t cluster_seedgen(void) {
 
 
 void GlobalInit(int* pargc, char*** pargv) {
+
   // Google flags.
   ::gflags::ParseCommandLineFlags(pargc, pargv, true);
   // Google logging.
   ::google::InitGoogleLogging(*(pargv)[0]);
   // Provide a backtrace on segfault.
   ::google::InstallFailureSignalHandler();
+
+#ifdef USE_MPI
+  //try start MPI communication system
+  MPI_Init(pargc, pargv);
+  Caffe::MPI_build_rank();
+
+  if (Caffe::MPI_all_rank() > 1) {
+    Caffe::set_parallel_mode(Caffe::MPI);
+    LOG(INFO)<<"Running parallel training with MPI support!";
+  }else{
+    LOG(INFO)<<"You are running caffe compiled with MPI support. Now it's running in non-parallel model";
+  }
+
+  //disable slave processes from logging to stderr
+  //also enable logging only events above ERROR level to logfile.
+  if (Caffe::MPI_my_rank() != 0){
+    FLAGS_logtostderr = false;
+    FLAGS_minloglevel = 2;
+  }
+#endif
+
+}
+
+void GlobalFinalize(){
+  //Add something here
+
+  #ifdef USE_MPI
+  MPI_Finalize();
+  #endif
 }
 
 #ifdef CPU_ONLY  // CPU-only Caffe.

@@ -101,13 +101,8 @@ int train() {
   caffe::SolverParameter solver_param;
   caffe::ReadProtoFromTextFileOrDie(FLAGS_solver, &solver_param);
 
-  // If the gpu flag is not provided, allow the mode and device to be set
-  // in the solver prototxt.
-  if (FLAGS_gpu < 0
-      && solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU) {
-    FLAGS_gpu = solver_param.device_id();
-  }
 
+#ifndef USE_MPI
   // Set device id and mode
   if (FLAGS_gpu >= 0) {
     LOG(INFO) << "Use GPU with device ID " << FLAGS_gpu;
@@ -117,6 +112,64 @@ int train() {
     LOG(INFO) << "Use CPU.";
     Caffe::set_mode(Caffe::CPU);
   }
+
+  // If the gpu flag is not provided, allow the mode and device to be set
+  // in the solver prototxt.
+  if (FLAGS_gpu < 0
+      && solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU) {
+    LOG(INFO) <<"Swtiching to GPU 0";
+    Caffe::set_mode(Caffe::GPU);
+    if (solver_param.device_id_size() == 0){
+      Caffe::SetDevice(0);
+    }else{
+      Caffe::SetDevice(solver_param.device_id(0));
+    }
+  }
+  #else
+  if (Caffe::parallel_mode() == Caffe::MPI){
+    if (FLAGS_gpu >= 0 ){
+      LOG(WARNING)<<"We detect that you are setting device id in command line flags. This will be ignored in parallel mode";
+      LOG(WARNING)<<"Please set a list of usable devices in the solver file.";
+    }
+    if (solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU){
+      Caffe::set_mode(Caffe::GPU);
+      if (solver_param.device_id_size() == 0){
+        LOG(INFO)<<"Using the automatic ordinal info for device id. Possible risk of over number";
+        Caffe::SetDevice(Caffe::MPI_my_rank());
+      }else {
+        CHECK_GE(solver_param.device_id_size(), Caffe::MPI_all_rank())
+          <<"If you would like to specify device id, please specify equal or more number of ids than the number of jobs";
+        Caffe::SetDevice(solver_param.device_id(Caffe::MPI_my_rank()));
+      }
+    }else{
+      Caffe::set_mode(Caffe::CPU);
+    }
+  }else{
+    if (FLAGS_gpu >= 0) {
+      LOG(INFO) << "Use GPU with device ID " << FLAGS_gpu;
+      Caffe::SetDevice(FLAGS_gpu);
+      Caffe::set_mode(Caffe::GPU);
+    } else {
+      LOG(INFO) << "Use CPU.";
+      Caffe::set_mode(Caffe::CPU);
+    }
+
+    // If the gpu flag is not provided, allow the mode and device to be set
+    // in the solver prototxt.
+    if (FLAGS_gpu < 0
+        && solver_param.solver_mode() == caffe::SolverParameter_SolverMode_GPU) {
+      LOG(INFO) <<"Swtiching to GPU 0";
+      Caffe::set_mode(Caffe::GPU);
+      if (solver_param.device_id_size() == 0){
+        Caffe::SetDevice(0);
+      }else{
+        Caffe::SetDevice(solver_param.device_id(0));
+      }
+    }
+  }
+
+
+  #endif
 
   LOG(INFO) << "Starting Optimization";
   shared_ptr<caffe::Solver<float> >
@@ -303,9 +356,17 @@ int main(int argc, char** argv) {
       "  time            benchmark model execution time");
   // Run tool or show usage.
   caffe::GlobalInit(&argc, &argv);
+
   if (argc == 2) {
-    return GetBrewFunction(caffe::string(argv[1]))();
+    int ret = GetBrewFunction(caffe::string(argv[1]))();
+    //Clean up after use.
+    caffe::GlobalFinalize();
+    return ret;
   } else {
     gflags::ShowUsageWithFlagsRestrict(argv[0], "tools/caffe");
+    //Clean up after use.
+    caffe::GlobalFinalize();
   }
+
+
 }

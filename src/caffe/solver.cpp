@@ -199,6 +199,17 @@ void Solver<Dtype>::Step(int iters) {
     for (int i = 0; i < param_.iter_size(); ++i) {
       loss += net_->ForwardBackward(bottom_vec);
     }
+
+    #ifdef USE_MPI
+    if (Caffe::parallel_mode() == Caffe::MPI) {
+      SyncGradient();
+
+      SyncOutput(this->net_);
+
+      loss = SyncLoss(loss);
+    }
+    #endif
+
     loss /= param_.iter_size();
     // average the loss across iterations for smoothed reporting
     if (losses.size() < average_loss) {
@@ -245,6 +256,102 @@ void Solver<Dtype>::Step(int iters) {
   }
 }
 
+#ifdef USE_MPI
+template <typename Dtype>
+void Solver<Dtype>::SyncGradient(){
+
+  const vector<int>& param_owners = this->net_->param_owners();
+  const vector<pair<int, int> >& param_layer_indices = this->net_->param_layer_indices();
+  const vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
+  double t1, t2;
+  t1 = MPI_Wtime();
+  for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+    int param_ownner = param_owners[param_id];
+
+    // is_self is a flag for whether we need to sync this blob
+    // if not, this blob has already been synced.
+    bool is_self = (param_ownner == -1)
+                   || (param_layer_indices[param_ownner].second == param_ownner);
+
+    // conduct gradient synchronization here
+    if (is_self){
+      int err = MPI_Allreduce(MPI_IN_PLACE,
+                    net_params[param_id]->mutable_gpu_diff(),
+                    net_params[param_id]->count(),
+                    (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
+                    MPI_SUM,
+                    MPI_COMM_WORLD
+      );
+      CHECK_EQ(err, MPI_SUCCESS)<<"MPI Operation failed";
+      caffe_gpu_scal(net_params[param_id]->count(),
+                     Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
+                     net_params[param_id]->mutable_gpu_diff());
+    }
+  }
+  t2 = MPI_Wtime();
+  DLOG(INFO)<<"Communication time "<<t2-t1<<" second";
+}
+
+template <typename Dtype>
+void Solver<Dtype>::SyncData(){
+
+  const vector<int>& param_owners = this->net_->param_owners();
+  const vector<pair<int, int> >& param_layer_indices = this->net_->param_layer_indices();
+  const vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
+  double t1, t2;
+  t1 = MPI_Wtime();
+  for (int param_id = 0; param_id < net_params.size(); ++param_id) {
+    int param_ownner = param_owners[param_id];
+
+    // is_self is a flag for whether we need to sync this blob
+    // if not, this blob has already been synced.
+    bool is_self = (param_ownner == -1)
+                   || (param_layer_indices[param_ownner].second == param_ownner);
+
+    // conduct data synchronization here
+    if (is_self){
+      Dtype* data = net_params[param_id]->mutable_gpu_data();
+      int err = MPI_Bcast(data,
+                          net_params[param_id]->count(),
+                          (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
+                          0,
+                          MPI_COMM_WORLD
+      );
+      CHECK_EQ(err, MPI_SUCCESS)<<"MPI Operation failed";
+    }
+  }
+  t2 = MPI_Wtime();
+  DLOG(INFO)<<"Communication time "<<t2-t1<<" second";
+}
+template <typename Dtype>
+void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
+  const vector<Blob<Dtype>*>& result = net->output_blobs();
+  for (int j = 0; j < result.size(); ++j) {
+    int err = MPI_Allreduce(MPI_IN_PLACE,
+                            result[j]->mutable_gpu_data(),
+                            result[j]->count(),
+                            (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
+                            MPI_SUM,
+                            MPI_COMM_WORLD);
+    CHECK_EQ(err, MPI_SUCCESS)<<"MPI sync on output values failed";
+    caffe_gpu_scal(result[j]->count(),
+                   Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
+                   result[j]->mutable_gpu_data());
+  }
+
+}
+template <typename Dtype>
+Dtype Solver<Dtype>::SyncLoss(Dtype loss){
+  Dtype sum_loss;
+  MPI_Reduce(&loss, &sum_loss,
+             1, (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
+             MPI_SUM,
+             0, MPI_COMM_WORLD
+  );
+  return sum_loss / Caffe::MPI_all_rank();
+}
+#endif
+
 template <typename Dtype>
 void Solver<Dtype>::Solve(const char* resume_file) {
   LOG(INFO) << "Solving " << net_->name();
@@ -254,6 +361,12 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     LOG(INFO) << "Restoring previous solver status from " << resume_file;
     Restore(resume_file);
   }
+  #ifdef USE_MPI
+  else{
+    SyncData();
+  }
+  #endif
+
 
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.
@@ -262,8 +375,22 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   // overridden by setting snapshot_after_train := false
   if (param_.snapshot_after_train()
       && (!param_.snapshot() || iter_ % param_.snapshot() != 0)) {
+
+    #ifndef USE_MPI
     Snapshot();
+    #else
+    if (Caffe::MPI_my_rank() == 0){
+      Snapshot();
+    }
+    if (Caffe::parallel_mode() == Caffe::MPI){
+      //Stop the world to wait for the master process to finish snapshot
+      //TODO: Send this to queue in blocking mode
+      MPI_Barrier(MPI_COMM_WORLD);
+    }
+    #endif
   }
+
+
   // After the optimization is done, run an additional train and test pass to
   // display the train and test loss/outputs if appropriate (based on the
   // display and test_interval settings, respectively).  Unlike in the rest of
@@ -304,6 +431,11 @@ void Solver<Dtype>::Test(const int test_net_id) {
     Dtype iter_loss;
     const vector<Blob<Dtype>*>& result =
         test_net->Forward(bottom_vec, &iter_loss);
+#ifdef USE_MPI
+    if (Caffe::parallel_mode() == Caffe::MPI) {
+      SyncOutput(test_net);
+    }
+#endif
     if (param_.test_compute_loss()) {
       loss += iter_loss;
     }
@@ -329,13 +461,15 @@ void Solver<Dtype>::Test(const int test_net_id) {
     loss /= param_.test_iter(test_net_id);
     LOG(INFO) << "Test loss: " << loss;
   }
+
   for (int i = 0; i < test_score.size(); ++i) {
     const int output_blob_index =
         test_net->output_blob_indices()[test_score_output_id[i]];
     const string& output_name = test_net->blob_names()[output_blob_index];
     const Dtype loss_weight = test_net->blob_loss_weights()[output_blob_index];
     ostringstream loss_msg_stream;
-    const Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
+    Dtype mean_score = test_score[i] / param_.test_iter(test_net_id);
+
     if (loss_weight) {
       loss_msg_stream << " (* " << loss_weight
                       << " = " << loss_weight * mean_score << " loss)";

@@ -58,6 +58,8 @@ void DataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     top[1]->Reshape(label_shape);
     this->prefetch_label_.Reshape(label_shape);
   }
+
+
 }
 
 // This function is used to create a thread that prefetches the data.

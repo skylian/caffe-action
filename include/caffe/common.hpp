@@ -16,6 +16,10 @@
 #include <utility>  // pair
 #include <vector>
 
+#ifdef USE_MPI
+  #include "mpi.h"
+#endif
+
 #include "caffe/util/device_alternate.hpp"
 
 // gflags 2.1 issue: namespace google was changed to gflags without warning.
@@ -93,7 +97,13 @@ using std::vector;
 // Currently it initializes google flags and google logging.
 void GlobalInit(int* pargc, char*** pargv);
 
-// A singleton class to hold common caffe stuff, such as the handler that
+// A global function to clear up remaining stuffs
+void GlobalFinalize();
+
+// Header for system entropy source
+int64_t cluster_seedgen(bool sync=true);
+
+  // A singleton class to hold common caffe stuff, such as the handler that
 // caffe is going to use for cublas, curand, etc.
 class Caffe {
  public:
@@ -150,12 +160,36 @@ class Caffe {
   // Prints the current GPU status.
   static void DeviceQuery();
 
+#ifdef USE_MPI
+  enum PARALLEL_MODE { NO, MPI };
+
+  //Returns current parallel mode, No or MPI
+  inline static PARALLEL_MODE parallel_mode() {return Get().parallel_mode_;}
+  // Setter of parallel mode
+  inline static void set_parallel_mode(PARALLEL_MODE mode) {Get().parallel_mode_ = mode;}
+
+  //Returns MPI_MY_RANK
+  inline static int MPI_my_rank(){return Get().mpi_my_rank_;}
+  inline static int MPI_all_rank(){return Get().mpi_all_rank_;}
+  inline static void MPI_build_rank(){
+    MPI_Comm_rank(MPI_COMM_WORLD, &(Get().mpi_my_rank_));
+    MPI_Comm_size(MPI_COMM_WORLD, &(Get().mpi_all_rank_));
+  }
+#endif
+
  protected:
 #ifndef CPU_ONLY
   cublasHandle_t cublas_handle_;
   curandGenerator_t curand_generator_;
 #endif
   shared_ptr<RNG> random_generator_;
+
+#ifdef USE_MPI
+
+  PARALLEL_MODE parallel_mode_;
+  int mpi_my_rank_;
+  int mpi_all_rank_;
+#endif
 
   Brew mode_;
   static shared_ptr<Caffe> singleton_;
