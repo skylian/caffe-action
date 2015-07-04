@@ -187,6 +187,13 @@ class Net {
   static bool StateMeetsRule(const NetState& state, const NetStateRule& rule,
       const string& layer_name);
 
+ /**
+  * @brief helper for retriving the layer related to a blob
+  */
+ inline shared_ptr<Layer<Dtype> > layer_by_param(int param_id){
+  return layers_[param_layer_indices_[param_id].first];
+ }
+
  protected:
   // Helpers for Init.
   /// @brief Append a new input or top blob to the net.
@@ -243,6 +250,7 @@ class Net {
   vector<int> param_owners_;
   vector<string> param_display_names_;
   vector<pair<int, int> > param_layer_indices_;
+  vector<pair<int, int> > top_layer_indices_;
   map<string, int> param_names_index_;
   /// blob indices for the input and the output of the net
   vector<int> net_input_blob_indices_;

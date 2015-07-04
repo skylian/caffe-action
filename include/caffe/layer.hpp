@@ -45,9 +45,13 @@ class Layer {
       }
 
       #ifdef USE_MPI
-      //check whether the parallel type is supported
-      if (!AllowParaType(param.para_type())){
-        LOG(FATAL)<<"Parallelization type "<<param.para_type()<<" not supported!";
+      //If this is a gather layer, all it subsequent layer doesn't need gradient sync.
+      //We will only change itself's property here,
+      //subsequent layers will be infered in the Net
+    if (is_gathering()){
+        set_need_sync(false);
+      }else{
+        set_need_sync(true);
       }
       #endif
     }
@@ -299,8 +303,9 @@ class Layer {
    *
    * If not supported, will halt the program with hints
    */
-  virtual inline bool AllowParaType(ParaType para_type){return para_type == DISTRIBUTED;}
-  inline ParaType para_type() {return layer_param_.para_type();}
+  inline virtual bool is_gathering() {return false;}
+  inline bool need_sync(){return need_sync_;}
+  inline void set_need_sync(bool val){need_sync_ = val;}
   #endif
 
 
@@ -317,6 +322,13 @@ class Layer {
   /** The vector that indicates whether each top blob has a non-zero weight in
    *  the objective function. */
   vector<Dtype> loss_;
+
+  #ifdef USE_MPI
+  /**
+   * For parallel use
+   */
+  bool need_sync_;
+  #endif
 
   /** @brief Using the CPU device, compute the layer output. */
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,

@@ -309,9 +309,6 @@ class InnerProductLayer : public Layer<Dtype> {
   virtual inline const char* type() const { return "InnerProduct"; }
   virtual inline int ExactNumBottomBlobs() const { return 1; }
   virtual inline int ExactNumTopBlobs() const { return 1; }
-  virtual inline bool AllowParaType(ParaType para_type){
-    return (para_type == DISTRIBUTED) && (para_type == GATHER);
-  }
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -608,6 +605,41 @@ class SliceLayer : public Layer<Dtype> {
   int slice_axis_;
   vector<int> slice_point_;
 };
+
+
+/**
+ * @brief Gather data in parallel mode
+ *
+ * TODO(dox): thorough documentation for Forward, Backward, and proto params.
+ */
+  template <typename Dtype>
+  class GatherLayer : public Layer<Dtype> {
+  public:
+    explicit GatherLayer(const LayerParameter& param)
+        : Layer<Dtype>(param) {}
+    virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+                            const vector<Blob<Dtype>*>& top);
+    virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+                         const vector<Blob<Dtype>*>& top);
+
+    virtual inline const char* type() const { return "Gather"; }
+    virtual inline int MinBottomBlobs() const { return 1; }
+    virtual inline int MinTopBlobs() const { return 1; }
+
+    virtual inline bool EqualNumBottomTopBlobs() const { return true; }
+    virtual inline bool is_gathering() {return true;}
+
+  protected:
+    virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+                             const vector<Blob<Dtype>*>& top);
+    virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+                             const vector<Blob<Dtype>*>& top);
+    virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+                              const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+    virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+                              const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+  };
 
 }  // namespace caffe
 
