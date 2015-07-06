@@ -189,6 +189,11 @@ void Solver<Dtype>::Step(int iters) {
 
     if (param_.test_interval() && iter_ % param_.test_interval() == 0
         && (iter_ > 0 || param_.test_initialization())) {
+#ifdef USE_MPI
+      if (Caffe::parallel_mode()==Caffe::MPI){
+          SyncData();
+      }
+#endif
       TestAll();
     }
 
@@ -202,6 +207,8 @@ void Solver<Dtype>::Step(int iters) {
 
     #ifdef USE_MPI
     if (Caffe::parallel_mode() == Caffe::MPI) {
+      DLOG(INFO)<<"Communication";
+
       SyncGradient();
 
       SyncOutput(this->net_);

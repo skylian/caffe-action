@@ -48,6 +48,7 @@ void GlobalInit(int* pargc, char*** pargv) {
     Caffe::set_parallel_mode(Caffe::MPI);
     LOG(INFO)<<"Running parallel training with MPI support!";
   }else{
+    Caffe::set_parallel_mode(Caffe::NO);
     LOG(INFO)<<"You are running caffe compiled with MPI support. Now it's running in non-parallel model";
   }
 
