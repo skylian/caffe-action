@@ -10,7 +10,7 @@
 #include "caffe/layer_factory.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/device_alternate.hpp"
-#include "../../../../../../home/alex/.clion10/system/cmake/generated/4085dc62/4085dc62/Release/include/caffe/proto/caffe.pb.h"
+#include "caffe/proto/caffe.pb.h"
 
 namespace caffe {
 
