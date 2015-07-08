@@ -1,3 +1,17 @@
+# Action Recognition with Deep Learning
+
+This branch hosts the code for the technical report "Towards Good Practices for Very Deep Two-stream ConvNets"
+
+Features:
+- `VideoDataLayer` for inputing video data
+- Training on optical flow data. [Optical flow extraction]()
+- Data augmentation with fixed corner cropping
+- Parallel training with multiple GPUs.
+
+
+----
+Following is the original README of Caffe.
+
 # Caffe
 
 Caffe is a deep learning framework made with expression, speed, and modularity in mind.
