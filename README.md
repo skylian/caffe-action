@@ -1,10 +1,10 @@
 # Action Recognition with Deep Learning
 
-This branch hosts the code for the technical report "Towards Good Practices for Very Deep Two-stream ConvNets"
+This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://xxx.tau.ac.il/abs/1507.02159).
 
 ### Features:
 - `VideoDataLayer` for inputing video data
-- Training on optical flow data. [Optical flow extraction]()
+- Training on optical flow data. [Optical flow extraction (Available soon).]()
 - Data augmentation with fixed corner cropping
 - Parallel training with multiple GPUs.
 
@@ -24,8 +24,17 @@ Please see following instruction for accessing features above. More detailed doc
 mkdir build && cd build
 cmake .. -DUSE_MPI=ON
 make && make install
-mpirun -np ./install/bin/caffe train --solver=<Your Solver File>'
+mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File>'
 ```
+
+**Note**: actual batch_size will be `num_device` times `batch_size` specified in network's prototxt.
+
+### Extension
+Currently all existing data layers sub-classed from `BasePrefetchLayer` support parallel training. If you have newly added layer which is also sub-classed `BasePrefetchLayer`, simply override the virtual method 
+```C++
+inline virtual void advance_cursor();
+```
+It's function shoue be forwarding the "cursor" in your data layer for one step. 
 
 ----
 Following is the original README of Caffe.
