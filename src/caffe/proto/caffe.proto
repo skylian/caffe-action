@@ -378,6 +378,9 @@ message TransformationParameter {
   //if set to true,
   //instead use a fixed position cropping (center, left-up, left-down, right-up, right-down)
   optional bool fix_crop = 10 [default = false];
+
+  //if set to true, use multi-scale data augmentation
+  optional bool multi_scale = 11 [default = false];
 }
 
 // Message that stores parameters shared by loss layers
