@@ -2,12 +2,30 @@
 
 This branch hosts the code for the technical report "Towards Good Practices for Very Deep Two-stream ConvNets"
 
-Features:
+### Features:
 - `VideoDataLayer` for inputing video data
 - Training on optical flow data. [Optical flow extraction]()
 - Data augmentation with fixed corner cropping
 - Parallel training with multiple GPUs.
 
+### Usage
+Generally it's the same as the original caffe. Please see the original README. 
+Please see following instruction for accessing features above. More detailed documentation is on the way.
+
+- Video/optic flow data
+  - A new data layer call "VideoDataLayer" has been added to support mutiple frame input
+- Fixed corner cropping augmentation
+  - Set `fix_crop` to `true` in `tranform_param` of network's protocol buffer definition.
+- Training with multiple GPUs
+  - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda))
+  - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
+  - Compile using cmake and use `mpirun` to launch caffe executable, like 
+```bash
+mkdir build && cd build
+cmake .. -DUSE_MPI=ON
+make && make install
+mpirun -np ./install/bin/caffe train --solver=<Your Solver File>'
+```
 
 ----
 Following is the original README of Caffe.
