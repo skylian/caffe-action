@@ -1,6 +1,6 @@
 # Action Recognition with Deep Learning
 
-This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://xxx.tau.ac.il/abs/1507.02159).
+This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159).
 
 ### Features:
 - `VideoDataLayer` for inputing video data
