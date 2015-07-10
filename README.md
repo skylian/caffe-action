@@ -34,7 +34,7 @@ Currently all existing data layers sub-classed from `BasePrefetchLayer` support 
 ```C++
 inline virtual void advance_cursor();
 ```
-It's function shoue be forwarding the "cursor" in your data layer for one step. 
+It's function should be forwarding the "cursor" in your data layer for one step. 
 
 ----
 Following is the original README of Caffe.
