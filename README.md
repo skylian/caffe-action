@@ -4,7 +4,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 
 ### Features:
 - `VideoDataLayer` for inputing video data
-- Training on optical flow data. [Optical flow extraction (Available soon).]()
+- Training on optical flow data. [Optical flow extraction](https://github.com/wanglimin/dense_flow).
 - Data augmentation with fixed corner cropping
 - Parallel training with multiple GPUs.
 
