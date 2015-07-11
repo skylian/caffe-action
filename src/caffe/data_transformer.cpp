@@ -68,12 +68,13 @@ void fillCropSize(int input_height, int input_width,
                  vector<pair<int, int> >& crop_sizes){
     crop_sizes.clear();
 
+    int base_size = std::min(input_height, input_width);
     for (int h = 0; h < scale_rates.size(); ++h){
-      int crop_h = input_height * scale_rates[h];
-      crop_h = (abs(crop_h - net_input_height) < 3)?net_input_height:input_height;
+      int crop_h = int(base_size * scale_rates[h]);
+      crop_h = (abs(crop_h - net_input_height) < 3)?net_input_height:crop_h;
       for (int w = 0; w < scale_rates.size(); ++w){
-        int crop_w = input_width * scale_rates[w];
-        crop_w = (abs(crop_w - net_input_width) < 3)?net_input_width:input_width;
+        int crop_w = int(base_size * scale_rates[w]);
+        crop_w = (abs(crop_w - net_input_width) < 3)?net_input_width:crop_w;
 
         //append this cropping size into the list
         if (abs(h-w)<=1) {
@@ -195,7 +196,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       }
 
       //resize the cropped patch to network input size
-      cv::Mat cropM(M, cv::Rect(w_off, h_off, crop_height, crop_width));
+      cv::Mat cropM(M, cv::Rect(w_off, h_off, crop_width, crop_height));
       cv::resize(cropM, multi_scale_bufferM, cv::Size(crop_size, crop_size));
     }
     for (int h = 0; h < height; ++h) {
@@ -207,7 +208,11 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
           top_index = (c * height + h) * width + w;
         }
         if (need_imgproc){
-          datum_element = static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
+          if (has_uint8){
+            datum_element = static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
+          }else {
+            datum_element = static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
+          }
         }else {
           if (has_uint8) {
             datum_element =
@@ -351,7 +356,6 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 
   vector<pair<int, int> > offset_pairs;
   vector<pair<int, int> > crop_size_pairs;
-  cv::Mat multi_scale_bufferM;
 
   CHECK_GT(img_channels, 0);
   CHECK_GE(img_height, crop_size);
@@ -380,6 +384,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   int crop_height = 0;
   int crop_width = 0;
   cv::Mat cv_cropped_img = cv_img;
+  cv::Mat multi_scale_bufferM = cv_img;
+
   if (crop_size) {
     CHECK_EQ(crop_size, height);
     CHECK_EQ(crop_size, width);
@@ -406,14 +412,17 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
     } else {
       h_off = (img_height - crop_size) / 2;
       w_off = (img_width - crop_size) / 2;
+      crop_width = crop_size;
+      crop_height = crop_size;
     }
-    cv::Rect roi(w_off, h_off, crop_height, crop_width);
-    cv_cropped_img = cv_img(roi);
+    cv::Rect roi(w_off, h_off, crop_width, crop_height);
 
     // if resize needed, first put the resized image into a buffer, then copy back.
-    if ((crop_height != crop_size) || (crop_width != crop_size)){
-      cv::resize(cv_cropped_img, multi_scale_bufferM, cv::Size(crop_size, crop_size));
-      cv_cropped_img = multi_scale_bufferM;
+    if (do_multi_scale && ((crop_height != crop_size) || (crop_width != crop_size))){
+      multi_scale_bufferM = cv_img(roi);
+      cv::resize(multi_scale_bufferM, cv_cropped_img, cv::Size(crop_size, crop_size));
+    }else{
+      cv_cropped_img = cv_img(roi);
     }
   } else {
     CHECK_EQ(img_height, height);
