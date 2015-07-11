@@ -184,7 +184,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       //put the datum content to a cvMat
       for (int h = 0; h < datum_height; ++h) {
         for (int w = 0; w < datum_width; ++w) {
-          int data_index = (c * datum_height + h) * datum_width + h;
+          int data_index = (c * datum_height + h) * datum_width + w;
           if (has_uint8) {
             M.at<uchar>(h, w) = static_cast<uint8_t>(data[data_index]);
           }else{
