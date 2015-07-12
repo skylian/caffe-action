@@ -110,7 +110,7 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 		vector<int> offsets;
 		int average_duration = (int) lines_duration_[lines_id_] / num_segments;
 		for (int i = 0; i < num_segments; ++i){
-			if (true){
+			if (this->phase_==TRAIN){
 				caffe::rng_t* frame_rng = static_cast<caffe::rng_t*>(frame_prefetch_rng_->generator());
 				int offset = (*frame_rng)() % (average_duration - new_length + 1);
 				offsets.push_back(offset+i*average_duration);

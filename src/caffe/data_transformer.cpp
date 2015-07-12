@@ -52,10 +52,10 @@ void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_
   offsets.push_back(pair<int, int>(height_off, width_off)); //center
 
   //fill the other non-corner crops
-  offsets.push_back(pair<int, int>(0, width_off)); //upper mid
-  offsets.push_back(pair<int, int>(height_off, 0)); //mid left
-  offsets.push_back(pair<int, int>(height_off, 2 * width_off)); //mid right
-  offsets.push_back(pair<int, int>(2 * height_off, width_off)); //lower mid
+//  offsets.push_back(pair<int, int>(0, width_off)); //upper mid
+//  offsets.push_back(pair<int, int>(height_off, 0)); //mid left
+//  offsets.push_back(pair<int, int>(height_off, 2 * width_off)); //mid right
+//  offsets.push_back(pair<int, int>(2 * height_off, width_off)); //lower mid
 }
 
 float _scale_rates[] = {1.0, .875, .75, .66};
@@ -77,7 +77,7 @@ void fillCropSize(int input_height, int input_width,
         crop_w = (abs(crop_w - net_input_width) < 3)?net_input_width:crop_w;
 
         //append this cropping size into the list
-        if (abs(h-w)<=1) {
+        if (abs(h-w)<=2) {
           crop_sizes.push_back(pair<int, int>(crop_h, crop_w));
         }
       }
@@ -186,7 +186,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       //put the datum content to a cvMat
       for (int h = 0; h < datum_height; ++h) {
         for (int w = 0; w < datum_width; ++w) {
-          int data_index = (c * datum_height + h) * datum_width + h;
+          int data_index = (c * datum_height + h) * datum_width + w;
           if (has_uint8) {
             M.at<uchar>(h, w) = static_cast<uint8_t>(data[data_index]);
           }else{
@@ -416,7 +416,6 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
       crop_height = crop_size;
     }
     cv::Rect roi(w_off, h_off, crop_width, crop_height);
-
     // if resize needed, first put the resized image into a buffer, then copy back.
     if (do_multi_scale && ((crop_height != crop_size) || (crop_width != crop_size))){
       multi_scale_bufferM = cv_img(roi);
