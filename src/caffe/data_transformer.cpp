@@ -51,11 +51,6 @@ void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_
   offsets.push_back(pair<int, int>(2 * height_off, 2 *width_off)); //lower right
   offsets.push_back(pair<int, int>(height_off, width_off)); //center
 
-  //fill the other non-corner crops
-  offsets.push_back(pair<int, int>(0, width_off)); //upper mid
-  offsets.push_back(pair<int, int>(height_off, 0)); //mid left
-  offsets.push_back(pair<int, int>(height_off, 2 * width_off)); //mid right
-  offsets.push_back(pair<int, int>(2 * height_off, width_off)); //lower mid
 }
 
 float _scale_rates[] = {1.0, .875, .75, .66};
