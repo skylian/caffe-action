@@ -215,8 +215,14 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
           }
         }
         if (has_mean_file) {
-          transformed_data[top_index] =
-              (datum_element - mean[data_index]) * scale;
+          if (do_multi_scale) {
+            int fixed_data_index = (c * datum_height +  h) * datum_width + w;
+            transformed_data[top_index] =
+                (datum_element - mean[fixed_data_index]) * scale;
+          }else{
+            transformed_data[top_index] =
+                (datum_element - mean[data_index]) * scale;
+          }
         } else {
           if (has_mean_values) {
             transformed_data[top_index] =
@@ -439,7 +445,10 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-          int mean_index = (c * img_height + h_off + h) * img_width + w_off + w;
+          //we will use a fixed position of mean map for multi-scale.
+          int mean_index = (do_multi_scale)?
+                           (c * img_height  + h) * img_width +  w
+                           :(c * img_height + h_off + h) * img_width +  w_off + w;
           transformed_data[top_index] =
             (pixel - mean[mean_index]) * scale;
         } else {
