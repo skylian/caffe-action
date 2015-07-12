@@ -5,7 +5,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 ### Features:
 - `VideoDataLayer` for inputing video data
 - Training on optical flow data. [Optical flow extraction](https://github.com/wanglimin/dense_flow).
-- Data augmentation with fixed corner cropping
+- Data augmentation with fixed corner cropping and multi-scale cropping
 - Parallel training with multiple GPUs.
 
 ### Usage
@@ -16,6 +16,8 @@ Please see following instruction for accessing features above. More detailed doc
   - A new data layer call "VideoDataLayer" has been added to support mutiple frame input
 - Fixed corner cropping augmentation
   - Set `fix_crop` to `true` in `tranform_param` of network's protocol buffer definition.
+- "Multi-scale" cropping augmentation
+  - Set `multi_scale` to `true` in `transform_param`
 - Training with multiple GPUs
   - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda))
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
@@ -29,12 +31,21 @@ mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File>'
 
 **Note**: actual batch_size will be `num_device` times `batch_size` specified in network's prototxt.
 
+### Working Examples
+- Action recognition on UCF101
+  - Coming soon...
+
 ### Extension
 Currently all existing data layers sub-classed from `BasePrefetchLayer` support parallel training. If you have newly added layer which is also sub-classed `BasePrefetchLayer`, simply override the virtual method 
 ```C++
 inline virtual void advance_cursor();
 ```
 It's function should be forwarding the "cursor" in your data layer for one step. 
+
+### Questions
+Contact 
+- [Limin Wang](http://wanglimin.github.io/)
+- [Yuanjun Xiong](http://personal.ie.cuhk.edu.hk/~xy012/)
 
 ----
 Following is the original README of Caffe.
