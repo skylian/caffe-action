@@ -20,7 +20,7 @@ Please see following instruction for accessing features above. More detailed doc
   - Set `multi_scale` to `true` in `transform_param`
   - Currently resizing the image to 100%, 87.5%, 75%, and 65% are randomly chosen.
 - Training with multiple GPUs
-  - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda))
+  - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda)). Remember to compile your OpenMPI with option "--with-cuda"
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
   - Compile using cmake and use `mpirun` to launch caffe executable, like 
 ```bash
