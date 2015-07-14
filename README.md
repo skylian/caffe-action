@@ -18,6 +18,7 @@ Please see following instruction for accessing features above. More detailed doc
   - Set `fix_crop` to `true` in `tranform_param` of network's protocol buffer definition.
 - "Multi-scale" cropping augmentation
   - Set `multi_scale` to `true` in `transform_param`
+  - Currently resizing the image to 100%, 87.5%, 75%, and 65% are randomly chosen.
 - Training with multiple GPUs
   - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda))
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
@@ -36,11 +37,11 @@ mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File>'
   - Coming soon...
 
 ### Extension
-Currently all existing data layers sub-classed from `BasePrefetchLayer` support parallel training. If you have newly added layer which is also sub-classed `BasePrefetchLayer`, simply override the virtual method 
+Currently all existing data layers sub-classed from `BasePrefetchingDataLayer` support parallel training. If you have newly added layer which is also sub-classed `BasePrefetchingDataLayer`, simply override the virtual method 
 ```C++
 inline virtual void advance_cursor();
 ```
-It's function should be forwarding the "cursor" in your data layer for one step. 
+Its function should be forwarding the "cursor" in your data layer for one step. 
 
 ### Questions
 Contact 
