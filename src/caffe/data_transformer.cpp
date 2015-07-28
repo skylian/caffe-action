@@ -51,7 +51,7 @@ void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_
   offsets.push_back(pair<int, int>(2 * height_off, 2 *width_off)); //lower right
   offsets.push_back(pair<int, int>(height_off, width_off)); //center
 
-  //fill the other non-corner crops
+//fill the other non-corner crops
 //  offsets.push_back(pair<int, int>(0, width_off)); //upper mid
 //  offsets.push_back(pair<int, int>(height_off, 0)); //mid left
 //  offsets.push_back(pair<int, int>(height_off, 2 * width_off)); //mid right
@@ -222,8 +222,14 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
           }
         }
         if (has_mean_file) {
-          transformed_data[top_index] =
-              (datum_element - mean[data_index]) * scale;
+          if (do_multi_scale) {
+            int fixed_data_index = (c * datum_height +  h) * datum_width + w;
+            transformed_data[top_index] =
+                (datum_element - mean[fixed_data_index]) * scale;
+          }else{
+            transformed_data[top_index] =
+                (datum_element - mean[data_index]) * scale;
+          }
         } else {
           if (has_mean_values) {
             transformed_data[top_index] =
@@ -445,7 +451,10 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-          int mean_index = (c * img_height + h_off + h) * img_width + w_off + w;
+          //we will use a fixed position of mean map for multi-scale.
+          int mean_index = (do_multi_scale)?
+                           (c * img_height  + h) * img_width +  w
+                           :(c * img_height + h_off + h) * img_width +  w_off + w;
           transformed_data[top_index] =
             (pixel - mean[mean_index]) * scale;
         } else {
