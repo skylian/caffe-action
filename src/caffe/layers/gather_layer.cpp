@@ -46,9 +46,9 @@ void GatherLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     for (int i = 0; i < bottom.size(); ++i) {
       //Gather the bottom to the top
 
-      MPI_Allgather(bottom[i]->cpu_data(), bottom[i]->count(),
+      MPI_Allgather((void*)bottom[i]->cpu_data(), bottom[i]->count(),
                     (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                    top[i]->mutable_cpu_data(), bottom[i]->count(),
+                    (void*)top[i]->mutable_cpu_data(), bottom[i]->count(),
                     (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
                     MPI_COMM_WORLD);
     }
@@ -65,9 +65,9 @@ void GatherLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       for (int i = 0; i < bottom.size(); ++i) {
         //Gather the bottom to the top
         if (propagate_down[i]) {
-          MPI_Scatter(top[i]->cpu_diff(), bottom[i]->count(),
+          MPI_Scatter((void*)top[i]->cpu_diff(), bottom[i]->count(),
                       (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                      bottom[i]->mutable_cpu_diff(), bottom[i]->count(),
+                      (void*)bottom[i]->mutable_cpu_diff(), bottom[i]->count(),
                       (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
                       0,
                       MPI_COMM_WORLD);

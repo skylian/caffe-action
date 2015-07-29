@@ -14,9 +14,9 @@ const vector<Blob<Dtype>*>& top) {
   if (Caffe::parallel_mode() == Caffe::MPI){
     for (int i = 0; i < bottom.size(); ++i) {
       //Gather the bottom to the top
-      MPI_Allgather(bottom[i]->gpu_data(), bottom[i]->count(),
+      MPI_Allgather((void*)bottom[i]->gpu_data(), bottom[i]->count(),
                     (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                    top[i]->mutable_gpu_data(), bottom[i]->count(),
+                    (void*)top[i]->mutable_gpu_data(), bottom[i]->count(),
                     (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
                     MPI_COMM_WORLD);
     }
@@ -33,9 +33,9 @@ const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
       for (int i = 0; i < bottom.size(); ++i) {
           //Scatter the top diff to buttom
           if (propagate_down[i]) {
-          MPI_Scatter(top[i]->gpu_diff(), bottom[i]->count(),
+          MPI_Scatter((void*)top[i]->gpu_diff(), bottom[i]->count(),
                       (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                      bottom[i]->mutable_gpu_diff(), bottom[i]->count(),
+                      (void*)bottom[i]->mutable_gpu_diff(), bottom[i]->count(),
                       (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
                       0,
                       MPI_COMM_WORLD);
