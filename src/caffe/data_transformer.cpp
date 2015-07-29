@@ -462,20 +462,15 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-<<<<<<< HEAD
-          int mean_index = (c * img_height + h_off + h) * img_width + w_off + w;
+        //we will use a fixed position of mean map for multi-scale.
+        int mean_index = (do_multi_scale)?
+                         (c * img_height  + h) * img_width +  w
+                         :(c * img_height + h_off + h) * img_width +  w_off + w;
           if (param_.is_flow() && do_mirror)
         	  transformed_data[top_index] =
 	            (255 - pixel - mean[mean_index]) * scale;
           else
         	  transformed_data[top_index] =
-=======
-          //we will use a fixed position of mean map for multi-scale.
-          int mean_index = (do_multi_scale)?
-                           (c * img_height  + h) * img_width +  w
-                           :(c * img_height + h_off + h) * img_width +  w_off + w;
-          transformed_data[top_index] =
->>>>>>> origin/action_recog
             (pixel - mean[mean_index]) * scale;
         } else {
           if (has_mean_values) {
