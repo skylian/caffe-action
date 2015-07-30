@@ -381,6 +381,12 @@ message TransformationParameter {
 
   //if set to true, use multi-scale data augmentation
   optional bool multi_scale = 11 [default = false];
+
+  // a list of float numbers less than 1 for multiple scales
+  repeated float scale_ratios = 12;
+
+  // maximal tolerated aspect ratio mismatch in the ratio list
+  optional int32 max_distort = 13 [default = 1];
 }
 
 // Message that stores parameters shared by loss layers

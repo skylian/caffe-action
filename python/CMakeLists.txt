@@ -8,6 +8,9 @@ file(GLOB_RECURSE python_srcs ${PROJECT_SOURCE_DIR}/python/*.cpp)
 
 add_library(pycaffe SHARED ${python_srcs})
 target_link_libraries(pycaffe ${Caffe_LINK} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES})
+if(USE_MPI)
+target_link_libraries(pycaffe ${MPI_CXX_LIBRARIES})
+endif()
 set_target_properties(pycaffe PROPERTIES PREFIX "" OUTPUT_NAME "_caffe")
 caffe_default_properties(pycaffe)
 
