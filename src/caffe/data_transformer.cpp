@@ -33,6 +33,13 @@ DataTransformer<Dtype>::DataTransformer(const TransformationParameter& param,
       mean_values_.push_back(param_.mean_value(c));
     }
   }
+
+  //load multiscale info
+  max_distort_ = param_.max_distort();
+  custom_scale_ratios_.clear();
+  for (int i = 0; i < param_.scale_ratios_size(); ++i){
+    custom_scale_ratios_.push_back(param_.scale_ratios(i));
+  }
 }
 
 
@@ -56,18 +63,21 @@ void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_
 //  offsets.push_back(pair<int, int>(height_off, 0)); //mid left
 //  offsets.push_back(pair<int, int>(height_off, 2 * width_off)); //mid right
 //  offsets.push_back(pair<int, int>(2 * height_off, width_off)); //lower mid
+
 }
 
 float _scale_rates[] = {1.0, .875, .75, .66};
-vector<float> scale_rates(_scale_rates, _scale_rates + sizeof(_scale_rates)/ sizeof(_scale_rates[0]) );
+vector<float> default_scale_rates(_scale_rates, _scale_rates + sizeof(_scale_rates)/ sizeof(_scale_rates[0]) );
 /**
  * @generate crop size when multi-scale cropping is requested
  */
 void fillCropSize(int input_height, int input_width,
                  int net_input_height, int net_input_width,
-                 vector<pair<int, int> >& crop_sizes){
+                 vector<pair<int, int> >& crop_sizes,
+                 int max_distort, vector<float>& custom_scale_ratios){
     crop_sizes.clear();
 
+    vector<float>& scale_rates = (custom_scale_ratios.size() > 0)?custom_scale_ratios:default_scale_rates;
     int base_size = std::min(input_height, input_width);
     for (int h = 0; h < scale_rates.size(); ++h){
       int crop_h = int(base_size * scale_rates[h]);
@@ -77,7 +87,8 @@ void fillCropSize(int input_height, int input_width,
         crop_w = (abs(crop_w - net_input_width) < 3)?net_input_width:crop_w;
 
         //append this cropping size into the list
-        if (abs(h-w)<=2) {
+
+        if (abs(h-w)<=max_distort) {
           crop_sizes.push_back(pair<int, int>(crop_h, crop_w));
         }
       }
@@ -147,7 +158,8 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
     if (phase_ == TRAIN) {
       // If in training and we need multi-scale cropping, reset the crop size params
       if (do_multi_scale){
-        fillCropSize(datum_height, datum_width, crop_size, crop_size, crop_size_pairs);
+        fillCropSize(datum_height, datum_width, crop_size, crop_size, crop_size_pairs,
+                     max_distort_, custom_scale_ratios_);
         int sel = Rand(crop_size_pairs.size());
         crop_height = crop_size_pairs[sel].first;
         crop_width = crop_size_pairs[sel].second;
@@ -222,8 +234,14 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
           }
         }
         if (has_mean_file) {
-          transformed_data[top_index] =
-              (datum_element - mean[data_index]) * scale;
+          if (do_multi_scale) {
+            int fixed_data_index = (c * datum_height +  h) * datum_width + w;
+            transformed_data[top_index] =
+                (datum_element - mean[fixed_data_index]) * scale;
+          }else{
+            transformed_data[top_index] =
+                (datum_element - mean[data_index]) * scale;
+          }
         } else {
           if (has_mean_values) {
             transformed_data[top_index] =
@@ -392,7 +410,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
     // We only do random crop when we do training.
     if (phase_ == TRAIN) {
       if (do_multi_scale){
-        fillCropSize(img_height, img_width, crop_size, crop_size, crop_size_pairs);
+        fillCropSize(img_height, img_width, crop_size, crop_size, crop_size_pairs,
+                     max_distort_, custom_scale_ratios_);
         int sel = Rand(crop_size_pairs.size());
         crop_height = crop_size_pairs[sel].first;
         crop_width = crop_size_pairs[sel].second;
@@ -445,7 +464,10 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-          int mean_index = (c * img_height + h_off + h) * img_width + w_off + w;
+          //we will use a fixed position of mean map for multi-scale.
+          int mean_index = (do_multi_scale)?
+                           (c * img_height  + h) * img_width +  w
+                           :(c * img_height + h_off + h) * img_width +  w_off + w;
           transformed_data[top_index] =
             (pixel - mean[mean_index]) * scale;
         } else {
