@@ -62,7 +62,7 @@ void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_
 }
 
 float _scale_rates[] = {1.0, .875, .75, .66};
-vector<float> scale_rates(_scale_rates, _scale_rates + sizeof(_scale_rates)/ sizeof(_scale_rates[0]) );
+vector<float> default_scale_rates(_scale_rates, _scale_rates + sizeof(_scale_rates)/ sizeof(_scale_rates[0]) );
 
 /**
  * @generate crop size when multi-scale cropping is requested
