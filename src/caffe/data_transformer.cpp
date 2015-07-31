@@ -58,16 +58,12 @@ void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_
   offsets.push_back(pair<int, int>(2 * height_off, 2 *width_off)); //lower right
   offsets.push_back(pair<int, int>(height_off, width_off)); //center
 
-  //fill the other non-corner crops
-//  offsets.push_back(pair<int, int>(0, width_off)); //upper mid
-//  offsets.push_back(pair<int, int>(height_off, 0)); //mid left
-//  offsets.push_back(pair<int, int>(height_off, 2 * width_off)); //mid right
-//  offsets.push_back(pair<int, int>(2 * height_off, width_off)); //lower mid
 
 }
 
 float _scale_rates[] = {1.0, .875, .75, .66};
-vector<float> default_scale_rates(_scale_rates, _scale_rates + sizeof(_scale_rates)/ sizeof(_scale_rates[0]) );
+vector<float> scale_rates(_scale_rates, _scale_rates + sizeof(_scale_rates)/ sizeof(_scale_rates[0]) );
+
 /**
  * @generate crop size when multi-scale cropping is requested
  */
@@ -87,7 +83,6 @@ void fillCropSize(int input_height, int input_width,
         crop_w = (abs(crop_w - net_input_width) < 3)?net_input_width:crop_w;
 
         //append this cropping size into the list
-
         if (abs(h-w)<=max_distort) {
           crop_sizes.push_back(pair<int, int>(crop_h, crop_w));
         }
@@ -221,16 +216,27 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
         }
         if (need_imgproc){
           if (has_uint8){
-            datum_element = static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
+        	  if (param_.is_flow() && do_mirror)
+        		  datum_element = 255 - static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
+        	  else
+        		  datum_element = static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
           }else {
-            datum_element = static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
+        	  if (param_.is_flow() && do_mirror)
+        		  datum_element = 255 - static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
+        	  else
+        		  datum_element = static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
           }
         }else {
           if (has_uint8) {
-            datum_element =
-                static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
+        	  if (param_.is_flow() && do_mirror)
+        		  datum_element = 255 - static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
+        	  else
+        		  datum_element = static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
           } else {
-            datum_element = datum.float_data(data_index);
+        	  if (param_.is_flow() && do_mirror)
+        		  datum_element = 255 - datum.float_data(data_index);
+        	  else
+        		  datum_element = datum.float_data(data_index);
           }
         }
         if (has_mean_file) {
@@ -464,18 +470,29 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-          //we will use a fixed position of mean map for multi-scale.
-          int mean_index = (do_multi_scale)?
-                           (c * img_height  + h) * img_width +  w
-                           :(c * img_height + h_off + h) * img_width +  w_off + w;
-          transformed_data[top_index] =
+        //we will use a fixed position of mean map for multi-scale.
+        int mean_index = (do_multi_scale)?
+                         (c * img_height  + h) * img_width +  w
+                         :(c * img_height + h_off + h) * img_width +  w_off + w;
+          if (param_.is_flow() && do_mirror)
+        	  transformed_data[top_index] =
+	            (255 - pixel - mean[mean_index]) * scale;
+          else
+        	  transformed_data[top_index] =
             (pixel - mean[mean_index]) * scale;
         } else {
           if (has_mean_values) {
-            transformed_data[top_index] =
-              (pixel - mean_values_[c]) * scale;
+        	  if (param_.is_flow() && do_mirror)
+        		  transformed_data[top_index] =
+        				  (255 - pixel - mean_values_[c]) * scale;
+        	  else
+        		  transformed_data[top_index] =
+        		                (pixel - mean_values_[c]) * scale;
           } else {
-            transformed_data[top_index] = pixel * scale;
+        	  if (param_.is_flow() && do_mirror)
+        		  transformed_data[top_index] = (255 - pixel) * scale;
+        	  else
+        		  transformed_data[top_index] = pixel * scale;
           }
         }
       }
@@ -580,7 +597,10 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
         if (do_mirror) {
           int top_index_w = top_index_h + width - 1;
           for (int w = 0; w < width; ++w) {
-            transformed_data[top_index_w-w] = input_data[data_index_h + w];
+        	  if (param_.is_flow())
+        		  transformed_data[top_index_w-w] = 255 - input_data[data_index_h + w];
+        	  else
+        		  transformed_data[top_index_w-w] = input_data[data_index_h + w];
           }
         } else {
           for (int w = 0; w < width; ++w) {

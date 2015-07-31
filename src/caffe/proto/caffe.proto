@@ -382,12 +382,16 @@ message TransformationParameter {
 
   //if set to true, use multi-scale data augmentation
   optional bool multi_scale = 11 [default = false];
+<<<<<<< HEAD
 
   // a list of float numbers less than 1 for multiple scales
   repeated float scale_ratios = 12;
 
   // maximal tolerated aspect ratio mismatch in the ratio list
   optional int32 max_distort = 13 [default = 1];
+  
+  //if set to true, it is optical flow field
+  optional bool is_flow = 12 [default = false];
 }
 
 // Message that stores parameters shared by loss layers
