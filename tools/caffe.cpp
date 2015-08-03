@@ -1,5 +1,4 @@
 #include <glog/logging.h>
-
 #include <cstring>
 #include <map>
 #include <string>
@@ -135,7 +134,8 @@ int train() {
       Caffe::set_mode(Caffe::GPU);
       if (solver_param.device_id_size() == 0){
         LOG(INFO)<<"Using the automatic ordinal info for device id. Possible risk of over number";
-        Caffe::SetDevice(Caffe::MPI_my_rank());
+//        Caffe::SetDevice(Caffe::MPI_my_rank());
+	Caffe::SetDevice(Caffe::MPI_local_rank());
       }else {
         CHECK_GE(solver_param.device_id_size(), Caffe::MPI_all_rank())
           <<"If you would like to specify device id, please specify equal or more number of ids than the number of jobs";

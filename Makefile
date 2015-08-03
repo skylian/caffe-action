@@ -171,7 +171,8 @@ ifneq ($(CPU_ONLY), 1)
 endif
 LIBRARIES += glog gflags protobuf leveldb snappy \
 	lmdb boost_system hdf5_hl hdf5 m \
-	opencv_core opencv_highgui opencv_imgproc
+	opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs\
+	mpi mpi_cxx pmi
 PYTHON_LIBRARIES := boost_python python2.7
 WARNINGS := -Wall -Wno-sign-compare
 
@@ -286,8 +287,14 @@ endif
 
 # cuDNN acceleration configuration.
 ifeq ($(USE_CUDNN), 1)
+	INCLUDE_DIRS += $(CUDNN_DIR)
+	LIBRARY_DIRS += $(CUDNN_DIR)
 	LIBRARIES += cudnn
 	COMMON_FLAGS += -DUSE_CUDNN
+endif
+
+ifeq ($(USE_MPI), 1)
+	COMMON_FLAGS += -DUSE_MPI
 endif
 
 # CPU-only configuration

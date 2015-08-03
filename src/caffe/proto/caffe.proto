@@ -656,6 +656,8 @@ message VideoDataParameter{
     FLOW = 1;
   }
   optional Modality modality = 13 [default = FLOW];
+  optional string root_folder = 14 [default = ""];
+  optional uint32 interval = 15 [default = 0];
 }
 message InfogainLossParameter {
   // Specify the infogain matrix source.

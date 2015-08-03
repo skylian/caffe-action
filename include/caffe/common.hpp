@@ -171,9 +171,13 @@ class Caffe {
   //Returns MPI_MY_RANK
   inline static int MPI_my_rank(){return Get().mpi_my_rank_;}
   inline static int MPI_all_rank(){return Get().mpi_all_rank_;}
+  inline static int MPI_local_rank(){return Get().mpi_local_rank_;}
   inline static void MPI_build_rank(){
     MPI_Comm_rank(MPI_COMM_WORLD, &(Get().mpi_my_rank_));
     MPI_Comm_size(MPI_COMM_WORLD, &(Get().mpi_all_rank_));
+    MPI_Comm local_comm;
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm);
+    MPI_Comm_rank(local_comm, &(Get().mpi_local_rank_));
   }
 #endif
 
@@ -187,7 +191,7 @@ class Caffe {
 #ifdef USE_MPI
 
   PARALLEL_MODE parallel_mode_;
-  int mpi_my_rank_;
+  int mpi_my_rank_, mpi_local_rank_;
   int mpi_all_rank_;
 #endif
 

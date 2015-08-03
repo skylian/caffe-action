@@ -43,10 +43,10 @@ void GlobalInit(int* pargc, char*** pargv) {
   //try start MPI communication system
   MPI_Init(pargc, pargv);
   Caffe::MPI_build_rank();
-
+  
   if (Caffe::MPI_all_rank() > 1) {
     Caffe::set_parallel_mode(Caffe::MPI);
-    LOG(INFO)<<"Running parallel training with MPI support!";
+    LOG(INFO)<<"Running parallel training with MPI support! " << Caffe::MPI_local_rank();
   }else{
     Caffe::set_parallel_mode(Caffe::NO);
     LOG(INFO)<<"You are running caffe compiled with MPI support. Now it's running in non-parallel model";
@@ -160,6 +160,7 @@ void Caffe::set_random_seed(const unsigned int seed) {
 void Caffe::SetDevice(const int device_id) {
   int current_device;
   CUDA_CHECK(cudaGetDevice(&current_device));
+  LOG(INFO) << "SetDevice@common.cpp " << device_id << " " << current_device;
   if (current_device == device_id) {
     return;
   }
