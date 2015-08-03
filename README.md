@@ -41,11 +41,11 @@ mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File> [--weights=<P
   - [Training scripts and data files examples](https://github.com/yjxiong/caffe/tree/action_recog/examples/action_recognition)
 
 ### Extension
-Currently all existing data layers sub-classed from `BasePrefetchingDataLayer` support parallel training. If you have newly added layer which is also sub-classed `BasePrefetchingDataLayer`, simply override the virtual method 
+Currently all existing data layers sub-classed from `BasePrefetchingDataLayer` support parallel training. If you have newly added layer which is also sub-classed from `BasePrefetchingDataLayer`, simply implement the virtual method 
 ```C++
 inline virtual void advance_cursor();
 ```
-Its function should be forwarding the "cursor" in your data layer for one step. 
+Its function should be forwarding the "data cursor" in your data layer for one step. Then your new layer will be able to provide support for parallel training.
 
 ### Questions
 Contact 
