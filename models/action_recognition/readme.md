@@ -16,10 +16,13 @@ These models are trained using the strategy described in
 [the tech report](http://arxiv.org/abs/1507.02159). Model and training configurations are set according to the original report. 
 
 The model parameters are initialized with the public available VGG-16 model and trained on the UCF-101 dataset. 
+The modified initialization models are provided
+
+[Spatial](http://mmlab.siat.ac.cn/pretrain/vgg_16_action_rgb_pretrain.caffemodel), [Temporal](http://mmlab.siat.ac.cn/pretrain/vgg_16_action_flow_pretrain.caffemodel).
 
 The bundled models are the iteration 15,000 snapshots using corresponding solvers.
 
-For more details, please see the [project page]().
+[Project page](http://personal.ie.cuhk.edu.hk/~xy012/others/action_recog/).
 
 These models were trained by Limin Wang @wanglimin and Yuanjun Xiong @yjxiong.
 

@@ -4,7 +4,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 
 ### Features:
 - `VideoDataLayer` for inputing video data
-- Training on optical flow data. [Optical flow extraction](https://github.com/wanglimin/dense_flow).
+- Training on optical flow data. 
 - Data augmentation with fixed corner cropping and multi-scale cropping
 - Parallel training with multiple GPUs.
 
@@ -13,12 +13,14 @@ Generally it's the same as the original caffe. Please see the original README.
 Please see following instruction for accessing features above. More detailed documentation is on the way.
 
 - Video/optic flow data
-  - A new data layer call "VideoDataLayer" has been added to support mutiple frame input
+  - First use the [optical flow extraction tool](https://github.com/wanglimin/dense_flow) to convert videos to RGB images and opitcal flow images.
+  - A new data layer called "VideoDataLayer" has been added to support multi-frame input. See the UCF101 sample for how to use it.
 - Fixed corner cropping augmentation
   - Set `fix_crop` to `true` in `tranform_param` of network's protocol buffer definition.
 - "Multi-scale" cropping augmentation
   - Set `multi_scale` to `true` in `transform_param`
-  - Currently resizing the image to 100%, 87.5%, 75%, and 65% are randomly chosen.
+  - In `transform_param`, specify `scale_ratios` as a list of floats less than one, default is `[1, .875, .75, .65]`
+  - In `transform_param`, specify `max_distort` to an integer, which will limit the aspect ratio distortion, default to `1`
 - Training with multiple GPUs
   - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda)). Remember to compile your OpenMPI with option "--with-cuda"
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
