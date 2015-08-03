@@ -1,11 +1,11 @@
-name: "VGGNet-16"
+name: "CUHK_Action_SpatialNet"
 layer {
   name: "data"
   type: "VideoData"
   top: "data"
   top: "label_local"
   video_data_param {
-    source: "dataset/train_flow_split1.txt"
+    source: "models/action_recognition/dataset_file_examples/train_flow_split1.txt"
     batch_size: 22
     new_length: 10
     num_segments: 1
@@ -29,7 +29,7 @@ layer {
   top: "data"
   top: "label_local"
   video_data_param {
-    source: "dataset/val_flow_split1.txt"
+    source: "models/action_recognition/dataset_file_examples/val_flow_split1.txt"
     batch_size: 5
     new_length: 10
     num_segments: 1

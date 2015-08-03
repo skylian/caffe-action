@@ -1,11 +1,11 @@
-name: "VGGNet-16"
+name: "CUHK_Action_TemporalNet"
 layer {
   name: "data"
   type: "VideoData"
   top: "data"
   top: "label_local"
   video_data_param {
-    source: "dataset/train_rgb_split1.txt"
+    source: "examples/action_recognition/dataset_file_examples/train_rgb_split1.txt"
     batch_size: 16
     new_width: 340
     new_height: 256
@@ -30,7 +30,7 @@ layer {
   top: "data"
   top: "label_local"
   video_data_param {
-    source: "dataset/val_rgb_split1.txt"
+    source: "examples/action_recognition/dataset_file_examples/val_rgb_split1.txt"
     batch_size: 5
     new_length: 1
     new_height: 256
