@@ -171,8 +171,8 @@ ifneq ($(CPU_ONLY), 1)
 endif
 LIBRARIES += glog gflags protobuf leveldb snappy \
 	lmdb boost_system hdf5_hl hdf5 m \
-	opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs\
-	mpi mpi_cxx pmi
+	opencv_core opencv_highgui opencv_imgproc opencv_imgcodecs
+
 PYTHON_LIBRARIES := boost_python python2.7
 WARNINGS := -Wall -Wno-sign-compare
 
@@ -295,6 +295,9 @@ endif
 
 ifeq ($(USE_MPI), 1)
 	COMMON_FLAGS += -DUSE_MPI
+	INCLUDE_DIRS += $(MPI_DIR)/include
+	LIBRARY_DIRS += $(MPI_DIR)/lib
+	LIBRARIES += mpi mpi_cxx
 endif
 
 # CPU-only configuration
