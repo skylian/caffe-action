@@ -19,7 +19,7 @@ Please see following instruction for accessing features above. More detailed doc
   - Set `fix_crop` to `true` in `tranform_param` of network's protocol buffer definition.
 - "Multi-scale" cropping augmentation
   - Set `multi_scale` to `true` in `transform_param`
-  - In `transform_param`, specify `scale_ratios` as a list of floats less than one, default is `[1, .875, .75, .65]`
+  - In `transform_param`, specify `scale_ratios` as a list of floats smaller than one, default is `[1, .875, .75, .65]`
   - In `transform_param`, specify `max_distort` to an integer, which will limit the aspect ratio distortion, default to `1`
 - Training with multiple GPUs
   - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda)). Remember to compile your OpenMPI with option "--with-cuda"
@@ -29,14 +29,16 @@ Please see following instruction for accessing features above. More detailed doc
 mkdir build && cd build
 cmake .. -DUSE_MPI=ON
 make && make install
-mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File>'
+mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File> [--weights=<Pretrained caffemodel>]'
 ```
 
 **Note**: actual batch_size will be `num_device` times `batch_size` specified in network's prototxt.
 
 ### Working Examples
 - Action recognition on UCF101
-  - Coming soon...
+  - [Project Site](http://personal.ie.cuhk.edu.hk/~xy012/others/action_recog/)
+  - [Caffe Model Files](https://github.com/yjxiong/caffe/tree/action_recog/models/action_recognition)
+  - [Training scripts and data files examples](https://github.com/yjxiong/caffe/tree/action_recog/examples/action_recognition)
 
 ### Extension
 Currently all existing data layers sub-classed from `BasePrefetchingDataLayer` support parallel training. If you have newly added layer which is also sub-classed `BasePrefetchingDataLayer`, simply override the virtual method 
