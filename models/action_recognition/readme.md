@@ -26,6 +26,11 @@ The bundled models are the iteration 15,000 snapshots using corresponding solver
 
 These models were trained by Limin Wang @wanglimin and Yuanjun Xiong @yjxiong.
 
+----
+
+**Note**:
+The training model `prototxt` file contains `"Gather"` layers which only work properly with this fork when "USE_MPI" is on. It is also possible to train the model with official Caffe codebase. You may need to incorporate the `VideoDataLayer`, remove `Gather` layers and restore all blob names suffixed by "_local" to their original names with out the suffix.
+
 ## License
 
 The models are released for non-commercial use.
