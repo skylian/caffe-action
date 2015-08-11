@@ -118,6 +118,7 @@ void* Caffe::RNG::generator() {
 Caffe::Caffe()
     : cublas_handle_(NULL), curand_generator_(NULL), random_generator_(),
     mode_(Caffe::CPU) {
+  #ifndef USE_MPI
   // Try to create a cublas handler, and report an error if failed (but we will
   // keep the program running as one might just want to run CPU code).
   if (cublasCreate(&cublas_handle_) != CUBLAS_STATUS_SUCCESS) {
@@ -130,6 +131,11 @@ Caffe::Caffe()
       != CURAND_STATUS_SUCCESS) {
     LOG(ERROR) << "Cannot create Curand generator. Curand won't be available.";
   }
+  #else
+  // we are not trying to create the any cuda stuff here
+  // because on exclusive mode GPUs it will cause program fail
+  // Reason: no device id assigned at this time, all processes will try to access gpu 0.
+  #endif
 }
 
 Caffe::~Caffe() {
