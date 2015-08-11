@@ -29,6 +29,6 @@ caffe.set_mode_gpu();
 caffe.set_device(gpu_id);
 net = caffe.Net(model_def_file, model_file, 'test');
 
-out_put = VideoTemporalPrediction(video_flow, mean_file, net);
+temporal_prediction = VideoTemporalPrediction(video_flow, mean_file, net);
 
 caffe.reset_all();
