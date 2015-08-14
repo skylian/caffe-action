@@ -39,6 +39,9 @@ mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File> [--weights=<P
   - [Project Site](http://personal.ie.cuhk.edu.hk/~xy012/others/action_recog/)
   - [Caffe Model Files](https://github.com/yjxiong/caffe/tree/action_recog/models/action_recognition)
   - [Training scripts and data files examples](https://github.com/yjxiong/caffe/tree/action_recog/examples/action_recognition)
+- Scene recognition on Places205
+  - [Model Files](https://github.com/wanglimin/Places205-VGGNet)
+  - [Technical Report](http://wanglimin.github.io/papers/WangGHQ15.pdf)
 
 ### Extension
 Currently all existing data layers sub-classed from `BasePrefetchingDataLayer` support parallel training. If you have newly added layer which is also sub-classed from `BasePrefetchingDataLayer`, simply implement the virtual method 
