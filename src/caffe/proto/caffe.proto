@@ -352,6 +352,7 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 128;
   optional WindowDataParameter window_data_param = 129;
   optional VideoDataParameter video_data_param = 140;
+  optional BNParameter bn_param = 141;
 }
 
 // Message that stores parameters used to apply transformation
@@ -1160,4 +1161,27 @@ message PReLUParameter {
   optional FillerParameter filler = 1;
   // Whether or not slope paramters are shared across channels.
   optional bool channel_shared = 2 [default = false];
+}
+
+// Message that stores parameters used by BN (Batch Normalization) layer
+message BNParameter {
+  enum BNMode {
+    LEARN = 0;
+    INFERENCE = 1;
+  }
+  enum BNForwardMode {
+    NoMean = 0;
+    CenterMean = 1;
+  }
+  optional BNForwardMode bn_forward_mode = 1 [default = CenterMean];
+  optional BNMode bn_mode = 2 [default = LEARN];
+  optional FillerParameter scale_filler = 3;  // The filler for the scale
+  optional FillerParameter shift_filler = 4;  // The filler for the shift
+
+  // The epsilon added to variance
+  optional float var_eps = 5 [default = 1e-10]; 
+  // whether or not using moving average for inference
+  optional bool moving_average = 6 [default = false];
+  // The decay factor for moving average
+  optional float decay = 7 [default = 0.95]; 
 }
