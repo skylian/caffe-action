@@ -173,11 +173,18 @@ class Caffe {
   inline static int MPI_all_rank(){return Get().mpi_all_rank_;}
   inline static int MPI_local_rank(){return Get().mpi_local_rank_;}
   inline static void MPI_build_rank(){
-    MPI_Comm_rank(MPI_COMM_WORLD, &(Get().mpi_my_rank_));
-    MPI_Comm_size(MPI_COMM_WORLD, &(Get().mpi_all_rank_));
+    int world_size, global_rank, local_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm local_comm;
     MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm);
-    MPI_Comm_rank(local_comm, &(Get().mpi_local_rank_));
+    MPI_Comm_rank(local_comm, &local_rank);
+    
+    Caffe::SetDevice(local_rank);
+    Get().mpi_my_rank_ = global_rank;
+    Get().mpi_all_rank_ = world_size;
+    Get().mpi_local_rank_ = local_rank;
+    //MPI_Comm_rank(MPI_COMM_WORLD, &(Get().mpi_local_rank_)); 
   }
 #endif
 
