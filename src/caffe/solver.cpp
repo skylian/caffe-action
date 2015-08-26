@@ -211,6 +211,8 @@ void Solver<Dtype>::Step(int iters) {
     if (Caffe::parallel_mode() == Caffe::MPI) {
       DLOG(INFO)<<"Communication";
 
+      MPIComm::Syncrhonize();
+
       SyncGradient();
 
       SyncOutput(this->net_);
@@ -298,9 +300,9 @@ void Solver<Dtype>::SyncGradient(){
 //                    MPI_COMM_WORLD
 //      );
 //      CHECK_EQ(err, MPI_SUCCESS)<<"MPI Operation failed";
-      caffe_iallreduce<Dtype>(net_params[param_id]->mutable_gpu_diff(),
-                       net_params[param_id]->count());
-      MPIComm::Syncrhonize();
+//      caffe_iallreduce<Dtype>(net_params[param_id]->mutable_gpu_diff(),
+//                       net_params[param_id]->count());
+//      MPIComm::Syncrhonize();
       caffe_gpu_scal(net_params[param_id]->count(),
                      Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
                      net_params[param_id]->mutable_gpu_diff());
@@ -345,13 +347,13 @@ template <typename Dtype>
 void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
   const vector<Blob<Dtype>*>& result = net->output_blobs();
   for (int j = 0; j < result.size(); ++j) {
-    /*int err = MPI_Allreduce(MPI_IN_PLACE,
-                            result[j]->mutable_gpu_data(),
-                            result[j]->count(),
-                            (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
-                            MPI_SUM,
-                            MPI_COMM_WORLD);
-    CHECK_EQ(err, MPI_SUCCESS)<<"MPI sync on output values failed";*/
+//    int err = MPI_Allreduce(MPI_IN_PLACE,
+//                            result[j]->mutable_gpu_data(),
+//                            result[j]->count(),
+//                            (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
+//                            MPI_SUM,
+//                            MPI_COMM_WORLD);
+//    CHECK_EQ(err, MPI_SUCCESS)<<"MPI sync on output values failed";
     caffe_iallreduce<Dtype>(result[j]->mutable_gpu_data(),
                      result[j]->count());
     MPIComm::Syncrhonize();
@@ -364,6 +366,9 @@ void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
 template <typename Dtype>
 Dtype Solver<Dtype>::SyncLoss(Dtype loss){
   Dtype sum_loss;
+//  MPI_Reduce(&loss, &sum_loss,
+//             1, (sizeof(Dtype) == 4)?MPI_FLOAT:MPI_DOUBLE,
+//             MPI_SUM, 0, MPI_COMM_WORLD);
   caffe_iallreduce<Dtype>(&loss, &sum_loss, 1);
   MPIComm::Syncrhonize();
   return sum_loss / Caffe::MPI_all_rank();
@@ -403,6 +408,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     if (Caffe::parallel_mode() == Caffe::MPI){
       //Stop the world to wait for the master process to finish snapshot
       //TODO: Send this to queue in blocking mode
+      MPIComm::Syncrhonize();
       MPI_Barrier(MPI_COMM_WORLD);
     }
     #endif

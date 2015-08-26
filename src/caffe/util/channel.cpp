@@ -39,8 +39,8 @@ bool MPIComm::IsIdle(){
 void MPIComm::WaitAll() {
 
   mutex::scoped_lock lock(queue_mutex_);
-  DLOG(INFO)<<"Waiting for tasks to finish, task size "<<task_queue_.size()<<"\n";
   while (task_queue_.size()){
+    DLOG(INFO)<<"Waiting for tasks to finish, task size "<<task_queue_.size()<<"\n";
     cond_finish_.wait(lock);
   }
   DLOG(INFO)<<"all task done on "<<Caffe::MPI_my_rank()<<"\n";
@@ -51,7 +51,6 @@ void MPIComm::StartProcessing() {
   running_.store(true);
   // start the transmission thread
   try {
-    std::cout<<"Starting MPI Comm\n";
     thread_.reset(
         new boost::thread(&MPIComm::ThreadFunc, this));
   } catch (...) {
@@ -62,6 +61,7 @@ void MPIComm::StartProcessing() {
 void MPIComm::EndProcessing(){
   if (IsRunning()) {
     try {
+      cond_work_.notify_one();
       running_.store(false); //notify the transmission thread to finish and shutdown
       thread_->join();
     } catch (...) {
@@ -132,6 +132,7 @@ void MPIComm::ThreadFunc(){
     DLOG(INFO)<<"Cond fulfilled, dispatching job";
     if (IsRunning()){
       job = task_queue_.front();
+      DLOG(INFO)<<task_queue_.size();
       DispatchJob(job);
       task_queue_.pop();
       lock.unlock();

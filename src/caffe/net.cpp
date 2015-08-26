@@ -14,6 +14,9 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/util/upgrade_proto.hpp"
 
+#include "caffe/util/channel.hpp"
+#include "caffe/util/mpi_functions.hpp"
+
 #include "caffe/test/test_caffe_main.hpp"
 
 namespace caffe {
@@ -614,8 +617,22 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
       layers_[i]->Backward(
           top_vecs_[i], bottom_need_backward_[i], bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
+      cudaDeviceSynchronize();
+
+      for (int n = 0; n < param_layer_indices_.size(); ++n){
+        if ((param_layer_indices_[n].first == i)
+            //&& ((param_owners_[n]==-1) || (param_owners_[n] == n))
+            && layers_[i]->need_sync()
+            ){
+          //sync gradient
+          caffe_iallreduce(
+              this->params_[param_layer_indices_[n].second]->mutable_gpu_diff(),
+              this->params_[param_layer_indices_[n].second]->count());
+        }
+      }
     }
   }
+  MPIComm::Syncrhonize();
 }
 
 template <typename Dtype>
