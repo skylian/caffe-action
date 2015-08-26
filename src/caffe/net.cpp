@@ -617,8 +617,8 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
       layers_[i]->Backward(
           top_vecs_[i], bottom_need_backward_[i], bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
-      cudaDeviceSynchronize();
 
+      cudaDeviceSynchronize();
       for (int n = 0; n < param_layer_indices_.size(); ++n){
         if ((param_layer_indices_[n].first == i)
             //&& ((param_owners_[n]==-1) || (param_owners_[n] == n))
@@ -628,6 +628,7 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
           caffe_iallreduce(
               this->params_[param_layer_indices_[n].second]->mutable_gpu_diff(),
               this->params_[param_layer_indices_[n].second]->count());
+
         }
       }
     }
