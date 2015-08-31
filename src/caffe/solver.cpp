@@ -211,7 +211,7 @@ void Solver<Dtype>::Step(int iters) {
     if (Caffe::parallel_mode() == Caffe::MPI) {
       DLOG(INFO)<<"Communication";
 
-      MPIComm::Syncrhonize();
+//      MPIComm::Syncrhonize();
 
       SyncGradient();
 
@@ -277,6 +277,8 @@ void Solver<Dtype>::SyncGradient(){
   shared_ptr<Layer<Dtype> > layer;
   double t1, t2;
   t1 = MPI_Wtime();
+
+  MPIComm::Syncrhonize();
   for (int param_id = 0; param_id < net_params.size(); ++param_id) {
     int param_ownner = param_owners[param_id];
 
@@ -292,17 +294,16 @@ void Solver<Dtype>::SyncGradient(){
 
     // conduct gradient synchronization here
     if (is_self && need_sync){
-//      int err = MPI_Allreduce(MPI_IN_P//CE,
-//                    net_params[param_id]->mutable_gpu_di//(),
-//                    net_params[param_id]->cou//(),
-//                    (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DO//LE,
-//                    MPI//UM,
-//                    MPI_COMM_//RLD
-//   // );
+
+//      int err = MPI_Allreduce(MPI_IN_PLACE,
+//                    net_params[param_id]->mutable_gpu_diff(),
+//                    net_params[param_id]->count(),
+//                    (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
+//                    MPI_SUM,
+//                    MPI_COMM_WORLD
+//    );
 //      CHECK_EQ(err, MPI_SUCCESS)<<"MPI Operation failed";
-//      caffe_iallreduce<Dtype>(net_params[param_id]->mutable_gpu_diff(),
-//                       net_params[param_id]->coun//));
-//      MPIComm::Syncrhonize();
+
       caffe_gpu_scal(net_params[param_id]->count(),
                      Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
                      net_params[param_id]->mutable_gpu_diff());

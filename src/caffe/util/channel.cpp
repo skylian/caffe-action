@@ -128,14 +128,16 @@ void MPIComm::ThreadFunc(){
       DLOG(INFO)<<"no job running, waiting on cond";
       cond_work_.wait(lock);
     }
+    lock.unlock();
 
     DLOG(INFO)<<"Cond fulfilled, dispatching job";
     if (IsRunning()){
       job = task_queue_.front();
       DLOG(INFO)<<task_queue_.size();
       DispatchJob(job);
+      mutex::scoped_lock pop_lock(queue_mutex_);
       task_queue_.pop();
-      lock.unlock();
+      pop_lock.unlock();
       cond_finish_.notify_one();
       DLOG(INFO)<<"job finished, poped taskqueue";
     }else{

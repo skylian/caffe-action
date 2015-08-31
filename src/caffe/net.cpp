@@ -612,28 +612,36 @@ template <typename Dtype>
 void Net<Dtype>::BackwardFromTo(int start, int end) {
   CHECK_GE(end, 0);
   CHECK_LT(start, layers_.size());
+  double t1, t2;
+  t1 = MPI_Wtime();
+
   for (int i = start; i >= end; --i) {
     if (layer_need_backward_[i]) {
       layers_[i]->Backward(
           top_vecs_[i], bottom_need_backward_[i], bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
 
-      cudaDeviceSynchronize();
+
+
       for (int n = 0; n < param_layer_indices_.size(); ++n){
         if ((param_layer_indices_[n].first == i)
             //&& ((param_owners_[n]==-1) || (param_owners_[n] == n))
             && layers_[i]->need_sync()
             ){
           //sync gradient
+
           caffe_iallreduce(
-              this->params_[param_layer_indices_[n].second]->mutable_gpu_diff(),
-              this->params_[param_layer_indices_[n].second]->count());
+              this->params_[n]->mutable_cpu_diff(),
+              this->params_[n]->count()
+          );
 
         }
       }
+
     }
   }
-  MPIComm::Syncrhonize();
+  t2 = MPI_Wtime();
+  DLOG(INFO)<<"Total BP time "<<t2-t1<<" second";
 }
 
 template <typename Dtype>
