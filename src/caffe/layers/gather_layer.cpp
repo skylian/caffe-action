@@ -2,6 +2,7 @@
 
 #include "caffe/common_layers.hpp"
 #include "caffe/layer.hpp"
+#include "caffe/util/mpi_functions.hpp"
 
 namespace caffe {
 
@@ -45,12 +46,8 @@ void GatherLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   if (Caffe::parallel_mode() == Caffe::MPI){
     for (int i = 0; i < bottom.size(); ++i) {
       //Gather the bottom to the top
-
-      MPI_Allgather(bottom[i]->cpu_data(), bottom[i]->count(),
-                    (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                    top[i]->mutable_cpu_data(), bottom[i]->count(),
-                    (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                    MPI_COMM_WORLD);
+      caffe_iallgather((Dtype*)bottom[i]->cpu_data(),top[i]->mutable_cpu_data(), bottom[i]->count());
+      mpi_force_synchronize();
     }
   }
   #endif
@@ -65,12 +62,8 @@ void GatherLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       for (int i = 0; i < bottom.size(); ++i) {
         //Gather the bottom to the top
         if (propagate_down[i]) {
-          MPI_Scatter(top[i]->cpu_diff(), bottom[i]->count(),
-                      (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                      bottom[i]->mutable_cpu_diff(), bottom[i]->count(),
-                      (sizeof(Dtype) == 4) ? MPI_FLOAT : MPI_DOUBLE,
-                      0,
-                      MPI_COMM_WORLD);
+          caffe_iscatter((Dtype*)top[i]->cpu_diff(),bottom[i]->mutable_cpu_diff(), bottom[i]->count());
+          mpi_force_synchronize();
           //compensate the scale on diff IMPORTANT
           caffe_scal(bottom[i]->count(), Dtype(Caffe::MPI_all_rank()),
                          bottom[i]->mutable_cpu_diff());

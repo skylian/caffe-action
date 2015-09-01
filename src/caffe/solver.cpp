@@ -296,15 +296,6 @@ void Solver<Dtype>::SyncGradient(){
     // conduct gradient synchronization here
     if (is_self && need_sync){
 
-//      int err = MPI_Allreduce(MPI_IN_PLACE,
-//                    net_params[param_id]->mutable_gpu_diff(),
-//                    net_params[param_id]->count(),
-//                    (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
-//                    MPI_SUM,
-//                    MPI_COMM_WORLD
-//    );
-//      CHECK_EQ(err, MPI_SUCCESS)<<"MPI Operation failed";
-
       caffe_gpu_scal(net_params[param_id]->count(),
                      Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
                      net_params[param_id]->mutable_gpu_diff());
@@ -331,13 +322,6 @@ void Solver<Dtype>::SyncData(){
     // conduct data synchronization here
     if (is_self){
       Dtype* data = net_params[param_id]->mutable_gpu_data();
-//      int err = MPI_Bcast(data,
-//                          net_params[param_id]->count(),
-//                          (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
-//                          0,
-//                          MPI_COMM_WORLD
-//      );
-//      CHECK_EQ(err, MPI_SUCCESS)<<"MPI Operation failed";
       caffe_ibcast(data, net_params[param_id]->count());
     }
   }
@@ -349,13 +333,6 @@ template <typename Dtype>
 void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
   const vector<Blob<Dtype>*>& result = net->output_blobs();
   for (int j = 0; j < result.size(); ++j) {
-//    int err = MPI_Allreduce(MPI_IN_PLACE,
-//                            result[j]->mutable_gpu_data(),
-//                            result[j]->count(),
-//                            (sizeof(Dtype)==4)?MPI_FLOAT:MPI_DOUBLE,
-//                            MPI_SUM,
-//                            MPI_COMM_WORLD);
-//    CHECK_EQ(err, MPI_SUCCESS)<<"MPI sync on output values failed";
     caffe_iallreduce<Dtype>(result[j]->mutable_gpu_data(),
                             result[j]->count());
   }
@@ -370,9 +347,6 @@ void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
 template <typename Dtype>
 Dtype Solver<Dtype>::SyncLoss(Dtype loss){
   Dtype sum_loss;
-//  MPI_Reduce(&loss, &sum_loss,
-//             1, (sizeof(Dtype) == 4)?MPI_FLOAT:MPI_DOUBLE,
-//             MPI_SUM, 0, MPI_COMM_WORLD);
   caffe_iallreduce<Dtype>(&loss, &sum_loss, 1);
   mpi_force_synchronize();
   return sum_loss / Caffe::MPI_all_rank();
