@@ -5,6 +5,7 @@
 #ifndef CAFFE_CHANNEL_HPP
 #define CAFFE_CHANNEL_HPP
 
+#ifdef USE_MPI
 
 #include <boost/shared_ptr.hpp>
 #include <boost/atomic.hpp>
@@ -73,5 +74,6 @@ class MPIComm{
 };
 };
 
+#endif //USE_MPI
 
 #endif //CAFFE_CHANNEL_HPP

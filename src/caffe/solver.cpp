@@ -204,6 +204,9 @@ void Solver<Dtype>::Step(int iters) {
     // accumulate the loss and gradient
     Dtype loss = 0;
     for (int i = 0; i < param_.iter_size(); ++i) {
+#ifdef USE_MPI
+      Caffe::set_remaining_sub_iter(param_.iter_size() - i - 1);
+#endif
       loss += net_->ForwardBackward(bottom_vec);
     }
 

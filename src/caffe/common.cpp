@@ -186,7 +186,9 @@ void Caffe::SetDevice(const int device_id) {
       CURAND_RNG_PSEUDO_DEFAULT));
   CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(Get().curand_generator_,
       cluster_seedgen()));
+#ifdef USE_MPI
   Get().device_id_ = device_id;
+#endif
 }
 
 void Caffe::DeviceQuery() {

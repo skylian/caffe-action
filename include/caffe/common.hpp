@@ -183,6 +183,8 @@ class Caffe {
     MPI_Comm_size(MPI_COMM_WORLD, &(Get().mpi_all_rank_));
   }
   inline static int device_id(){return Get().device_id_;}
+  inline static int remaining_sub_iter(){return Get().remaining_sub_iter_;}
+  inline static void set_remaining_sub_iter(int n){Get().remaining_sub_iter_ = n;}
 #endif
 
  protected:
@@ -198,6 +200,7 @@ class Caffe {
   int mpi_my_rank_;
   int mpi_all_rank_;
   int device_id_;
+  int remaining_sub_iter_;
 #endif
 
   Brew mode_;

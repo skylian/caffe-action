@@ -2,6 +2,8 @@
 // Created by alex on 8/25/15.
 //
 
+#ifdef USE_MPI
+
 #include "caffe/caffe.hpp"
 #include "caffe/util/mpi_functions.hpp"
 #include "caffe/util/channel.hpp"
@@ -63,3 +65,5 @@ namespace caffe {
     MPIComm::Syncrhonize();
   }
 }
+
+#endif //USE_MPI

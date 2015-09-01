@@ -2,6 +2,8 @@
 // Created by alex on 8/25/15.
 //
 
+#ifdef USE_MPI
+
 #include <boost/thread.hpp>
 #include <boost/atomic.hpp>
 #include <boost/lockfree/queue.hpp>
@@ -156,3 +158,5 @@ void MPIComm::ThreadFunc(){
 }
 
 }
+
+#endif //USE_MPI
