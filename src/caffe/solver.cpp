@@ -211,8 +211,6 @@ void Solver<Dtype>::Step(int iters) {
     if (Caffe::parallel_mode() == Caffe::MPI) {
       DLOG(INFO)<<"Communication";
 
-//      MPIComm::Syncrhonize();
-
       SyncGradient();
 
       SyncOutput(this->net_);
@@ -278,7 +276,7 @@ void Solver<Dtype>::SyncGradient(){
   double t1, t2;
   t1 = MPI_Wtime();
 
-  MPIComm::Syncrhonize();
+  mpi_force_synchronize();
   for (int param_id = 0; param_id < net_params.size(); ++param_id) {
     int param_ownner = param_owners[param_id];
 
@@ -340,9 +338,9 @@ void Solver<Dtype>::SyncData(){
       caffe_ibcast(data, net_params[param_id]->count());
     }
   }
-  MPIComm::Syncrhonize();
+  mpi_force_synchronize();
   t2 = MPI_Wtime();
-  LOG(INFO)<<"Communication time "<<t2-t1<<" second";
+  LOG(INFO)<<"Model Synchronization Communication time "<<t2-t1<<" second";
 }
 template <typename Dtype>
 void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
@@ -356,8 +354,10 @@ void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
 //                            MPI_COMM_WORLD);
 //    CHECK_EQ(err, MPI_SUCCESS)<<"MPI sync on output values failed";
     caffe_iallreduce<Dtype>(result[j]->mutable_gpu_data(),
-                     result[j]->count());
-    MPIComm::Syncrhonize();
+                            result[j]->count());
+  }
+  mpi_force_synchronize();
+  for( int j = 0; j < result.size(); ++j){
     caffe_gpu_scal(result[j]->count(),
                    Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
                    result[j]->mutable_gpu_data());
@@ -371,7 +371,7 @@ Dtype Solver<Dtype>::SyncLoss(Dtype loss){
 //             1, (sizeof(Dtype) == 4)?MPI_FLOAT:MPI_DOUBLE,
 //             MPI_SUM, 0, MPI_COMM_WORLD);
   caffe_iallreduce<Dtype>(&loss, &sum_loss, 1);
-  MPIComm::Syncrhonize();
+  mpi_force_synchronize();
   return sum_loss / Caffe::MPI_all_rank();
 }
 #endif

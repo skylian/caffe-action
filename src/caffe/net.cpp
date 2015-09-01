@@ -614,6 +614,8 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
   CHECK_LT(start, layers_.size());
   double t1, t2;
   t1 = MPI_Wtime();
+  cudaStream_t data_stream;
+  CUDA_CHECK(cudaStreamCreate(&data_stream));
 
   for (int i = start; i >= end; --i) {
     if (layer_need_backward_[i]) {
@@ -621,27 +623,39 @@ void Net<Dtype>::BackwardFromTo(int start, int end) {
           top_vecs_[i], bottom_need_backward_[i], bottom_vecs_[i]);
       if (debug_info_) { BackwardDebugInfo(i); }
 
-
-
       for (int n = 0; n < param_layer_indices_.size(); ++n){
-        if ((param_layer_indices_[n].first == i)
-            //&& ((param_owners_[n]==-1) || (param_owners_[n] == n))
-            && layers_[i]->need_sync()
-            ){
-          //sync gradient
+        bool ready_for_sync = false;
 
-          caffe_iallreduce(
+        //decide whether we need to sync the gradient of this blob
+        if ((param_layer_indices_[n].first == i)) {
+          if (param_owners_[n]==-1){
+            ready_for_sync = true;
+          }else{
+            // this blob is a shared one, we need to make sure no more gradients will be
+            // accumulated to it before transmission
+            int owner_id = param_owners_[n];
+            ready_for_sync = true;
+            for (int m = n-1; m >=0; --m){
+              if ((param_owners_[m] == owner_id) && (param_layer_indices_[m].first >= end)){
+                // there are still layers holding this shared blob,
+                // not secure the do the transmission
+                ready_for_sync = false;
+                break;
+              }
+            }
+          }
+        }
+          //sync gradient
+        if (ready_for_sync && layers_[i]->need_sync()) caffe_iallreduce(
               this->params_[n]->mutable_cpu_diff(),
               this->params_[n]->count()
+             // data_stream
           );
-
-        }
       }
-
     }
   }
   t2 = MPI_Wtime();
-  DLOG(INFO)<<"Total BP time "<<t2-t1<<" second";
+//  LOG(INFO)<<"Total BP time "<<t2-t1<<" second";
 }
 
 template <typename Dtype>

@@ -13,7 +13,6 @@
 
 #include "mpi.h"
 
-
 namespace caffe {
 
 shared_ptr<MPIComm> MPIComm::singleton_;
@@ -85,6 +84,7 @@ void MPIComm::AddJob(MPIJob new_job) {
 
 void MPIComm::DispatchJob(MPIJob &job) {
   MPI_Datatype data_type = (job.dtype_size_ == 4) ? MPI_FLOAT : MPI_DOUBLE;
+
   // call MPI APIs for real works
   switch (job.op_) {
     case OP_SUM_ALL: {
