@@ -330,6 +330,7 @@ protected:
 
 	vector<std::pair<std::string, int> > lines_;
 	vector<int> lines_duration_;
+	vector<string> root_folders_;
 	int lines_id_;
 };
 

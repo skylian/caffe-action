@@ -17,7 +17,7 @@ void HDF5OutputLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   file_name_ = this->layer_param_.hdf5_output_param().file_name();
   file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT,
                        H5P_DEFAULT);
-  CHECK_GE(file_id_, 0) << "Failed to open HDF5 file" << file_name_;
+  CHECK_GE(file_id_, 0) << "Failed to open HDF5 file " << file_name_;
   file_opened_ = true;
 }
 

@@ -269,7 +269,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 138 (last added: lstm_param)
+// LayerParameter next available layer-specific ID: 145 (last added: mat_write_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -353,7 +353,9 @@ message LayerParameter {
   optional WindowDataParameter window_data_param = 129;
   optional VideoDataParameter video_data_param = 140;
   optional BNParameter bn_param = 141;
-  optional LSTMParameter lstm_param = 137;
+  optional LSTMParameter lstm_param = 142;
+  optional MatReadParameter mat_read_param = 143;
+  optional MatWriteParameter mat_write_param = 144;
 }
 
 // Message that stores parameters used to apply transformation
@@ -625,42 +627,6 @@ message ImageDataParameter {
   optional string root_folder = 12 [default = ""];
 }
 
-message VideoDataParameter{
-  // Specify the data source.
-  optional string source = 1;
-  // Specify the batch size.
-  optional uint32 batch_size = 4;
-  // The rand_skip variable is for the data layer to skip a few data points
-  // to avoid all asynchronous sgd clients to start at the same point. The skip
-  // point would be set as rand_skip * rand(0,1). Note that rand_skip should not
-  // be larger than the number of keys in the leveldb.
-  optional uint32 rand_skip = 7 [default = 0];
-  // Whether or not ImageLayer should shuffle the list of files at every epoch.
-  optional bool shuffle = 8 [default = false];
-  // It will also resize images if new_height or new_width are not zero.
-  optional uint32 new_height = 9 [default = 0];
-  optional uint32 new_width = 10 [default = 0];
-  optional uint32 new_length = 11 [default = 1];
-  optional uint32 num_segments = 12 [default = 1];
-  // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
-  // simple scaling and subtracting the data mean, if provided. Note that the
-  // mean subtraction is always carried out before scaling.
-  optional float scale = 2 [default = 1];
-  optional string mean_file = 3;
-  // DEPRECATED. See TransformationParameter. Specify if we would like to randomly
-  // crop an image.
-  optional uint32 crop_size = 5 [default = 0];
-  // DEPRECATED. See TransformationParameter. Specify if we want to randomly mirror
-  // data.
-  optional bool mirror = 6 [default = false];
-  enum Modality {
-    RGB = 0;
-    FLOW = 1;
-  }
-  optional Modality modality = 13 [default = FLOW];
-  optional string root_folder = 14 [default = ""];
-  optional uint32 interval = 15 [default = 0];
-}
 message InfogainLossParameter {
   // Specify the infogain matrix source.
   optional string source = 1;
@@ -708,6 +674,20 @@ message LSTMParameter {
   optional FillerParameter weight_filler = 3; // The filler for weight
   optional FillerParameter bias_filler = 4; // The filler for the bias
   optional uint32 batch_size = 5 [default = 1];
+}
+
+message MatReadParameter {
+  required string prefix = 1;
+  optional string source = 2 [default = ""];
+  optional int32 strip = 3 [default = 0];
+  optional int32 batch_size = 4 [default = 1];
+}
+
+message MatWriteParameter {
+  required string prefix = 1;
+  optional string source = 2 [default = ""];
+  optional int32 strip = 3 [default = 0];
+  optional int32 period = 4 [default = 1];
 }
 
 message MemoryDataParameter {
@@ -913,6 +893,22 @@ message SoftmaxParameter {
   optional int32 axis = 2 [default = 1];
 }
 
+message SPPParameter {
+  enum PoolMethod {
+    MAX = 0;
+    AVE = 1;
+    STOCHASTIC = 2;
+  }
+  optional uint32 pyramid_height = 1;
+  optional PoolMethod pool = 2 [default = MAX]; // The pooling method
+  enum Engine {
+    DEFAULT = 0;
+    CAFFE = 1;
+    CUDNN = 2;
+  }
+  optional Engine engine = 6 [default = DEFAULT];
+}
+
 message TanHParameter {
   enum Engine {
     DEFAULT = 0;
@@ -959,21 +955,42 @@ message WindowDataParameter {
   optional string root_folder = 13 [default = ""];
 }
 
-
-message SPPParameter {
-  enum PoolMethod {
-    MAX = 0;
-    AVE = 1;
-    STOCHASTIC = 2;
+message VideoDataParameter{
+  // Specify the data source.
+  optional string source = 1;
+  // Specify the batch size.
+  optional uint32 batch_size = 4;
+  // The rand_skip variable is for the data layer to skip a few data points
+  // to avoid all asynchronous sgd clients to start at the same point. The skip
+  // point would be set as rand_skip * rand(0,1). Note that rand_skip should not
+  // be larger than the number of keys in the leveldb.
+  optional uint32 rand_skip = 7 [default = 0];
+  // Whether or not ImageLayer should shuffle the list of files at every epoch.
+  optional bool shuffle = 8 [default = false];
+  // It will also resize images if new_height or new_width are not zero.
+  optional uint32 new_height = 9 [default = 0];
+  optional uint32 new_width = 10 [default = 0];
+  optional uint32 new_length = 11 [default = 1];
+  optional uint32 num_segments = 12 [default = 1];
+  // DEPRECATED. See TransformationParameter. For data pre-processing, we can do
+  // simple scaling and subtracting the data mean, if provided. Note that the
+  // mean subtraction is always carried out before scaling.
+  optional float scale = 2 [default = 1];
+  optional string mean_file = 3;
+  // DEPRECATED. See TransformationParameter. Specify if we would like to randomly
+  // crop an image.
+  optional uint32 crop_size = 5 [default = 0];
+  // DEPRECATED. See TransformationParameter. Specify if we want to randomly mirror
+  // data.
+  optional bool mirror = 6 [default = false];
+  enum Modality {
+    RGB = 0;
+    FLOW = 1;
+    BOTH = 2;
   }
-  optional uint32 pyramid_height = 1;
-  optional PoolMethod pool = 2 [default = MAX]; // The pooling method
-  enum Engine {
-    DEFAULT = 0;
-    CAFFE = 1;
-    CUDNN = 2;
-  }
-  optional Engine engine = 6 [default = DEFAULT];
+  optional Modality modality = 13 [default = FLOW];
+  repeated string root_folder = 14;
+  optional uint32 interval = 15 [default = 0];
 }
 
 // DEPRECATED: use LayerParameter.
