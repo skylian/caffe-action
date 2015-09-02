@@ -38,6 +38,11 @@ find_package(LevelDB REQUIRED)
 include_directories(SYSTEM ${LevelDB_INCLUDE})
 list(APPEND Caffe_LINKER_LIBS ${LevelDB_LIBRARIES})
 
+# ---[ MATIO
+find_package(MATIO REQUIRED)
+include_directories(SYSTEM ${MATIO_INCLUDE_DIR})
+list(APPEND Caffe_LINKER_LIBS ${MATIO_LIBRARIES})
+
 # ---[ Snappy
 find_package(Snappy REQUIRED)
 include_directories(SYSTEM ${Snappy_INCLUDE_DIR})
@@ -164,3 +169,4 @@ if (USE_MPI)
   add_definitions(-DUSE_MPI)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${MPI_CXX_LINK_FLAGS}")
 endif()
+
