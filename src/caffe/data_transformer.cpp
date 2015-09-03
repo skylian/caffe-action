@@ -103,7 +103,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 
 	const int crop_size = param_.crop_size();
 	const Dtype scale = param_.scale();
-	const bool do_mirror = param_.mirror() && Rand(2);
+	const bool do_mirror = param_.mirror();// && Rand(2);
 	const bool has_mean_file = param_.has_mean_file();
 	const bool has_uint8 = data.size() > 0;
 	const bool has_mean_values = mean_values_.size() > 0;
@@ -113,6 +113,8 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 	cv::Mat multi_scale_bufferM;
 
 	CHECK_GT(datum_channels, 0);
+	CHECK(datum_channels > param_.flow_point()) <<
+			"Flow point should be smaller than the number of channels.";
 	CHECK_GE(datum_height, crop_size);
 	CHECK_GE(datum_width, crop_size);
 
@@ -185,6 +187,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 
 	Dtype datum_element;
 	int top_index, data_index;
+	bool is_flow;
 	for (int c = 0; c < datum_channels; ++c) {
 		// image resize etc needed
 		if (need_imgproc){
@@ -206,6 +209,8 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 			cv::Mat cropM(M, cv::Rect(w_off, h_off, crop_width, crop_height));
 			cv::resize(cropM, multi_scale_bufferM, cv::Size(crop_size, crop_size));
 		}
+
+		is_flow = param_.is_flow() || (param_.has_flow() && c >= param_.flow_point());
 		for (int h = 0; h < height; ++h) {
 			for (int w = 0; w < width; ++w) {
 				data_index = (c * datum_height + h_off + h) * datum_width + w_off + w;
@@ -216,24 +221,24 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 				}
 				if (need_imgproc){
 					if (has_uint8){
-						if (param_.is_flow() && do_mirror)
+						if (is_flow && do_mirror)
 							datum_element = 255 - static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
 						else
 							datum_element = static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
 					}else {
-						if (param_.is_flow() && do_mirror)
+						if (is_flow && do_mirror)
 							datum_element = 255 - static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
 						else
 							datum_element = static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
 					}
 				}else {
 					if (has_uint8) {
-						if (param_.is_flow() && do_mirror)
+						if (is_flow && do_mirror)
 							datum_element = 255 - static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
 						else
 							datum_element = static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
 					} else {
-						if (param_.is_flow() && do_mirror)
+						if (is_flow && do_mirror)
 							datum_element = 255 - datum.float_data(data_index);
 						else
 							datum_element = datum.float_data(data_index);
@@ -462,6 +467,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 		int img_index = 0;
 		for (int w = 0; w < width; ++w) {
 			for (int c = 0; c < img_channels; ++c) {
+				bool is_flow = param_.is_flow() || (param_.has_flow() && c >= param_.flow_point());
 				if (do_mirror) {
 					top_index = (c * height + h) * width + (width - 1 - w);
 				} else {
@@ -474,7 +480,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 					int mean_index = (do_multi_scale)?
 							(c * img_height  + h) * img_width +  w
 							:(c * img_height + h_off + h) * img_width +  w_off + w;
-					if (param_.is_flow() && do_mirror)
+					if (is_flow && do_mirror)
 						transformed_data[top_index] =
 								(255 - pixel - mean[mean_index]) * scale;
 					else
@@ -482,14 +488,14 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 								(pixel - mean[mean_index]) * scale;
 				} else {
 					if (has_mean_values) {
-						if (param_.is_flow() && do_mirror)
+						if (is_flow && do_mirror)
 							transformed_data[top_index] =
 									(255 - pixel - mean_values_[c]) * scale;
 						else
 							transformed_data[top_index] =
 									(pixel - mean_values_[c]) * scale;
 					} else {
-						if (param_.is_flow() && do_mirror)
+						if (is_flow && do_mirror)
 							transformed_data[top_index] = (255 - pixel) * scale;
 						else
 							transformed_data[top_index] = pixel * scale;
@@ -530,6 +536,8 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
 	CHECK_EQ(input_channels, channels);
 	CHECK_GE(input_height, height);
 	CHECK_GE(input_width, width);
+	CHECK(channels > param_.flow_point()) <<
+			"Flow point should be smaller than the number of channels.";
 
 
 	const Dtype scale = param_.scale();
@@ -589,6 +597,7 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
 		int top_index_n = n * channels;
 		int data_index_n = n * channels;
 		for (int c = 0; c < channels; ++c) {
+			bool is_flow = param_.is_flow() || (param_.has_flow() && c >= param_.flow_point());
 			int top_index_c = (top_index_n + c) * height;
 			int data_index_c = (data_index_n + c) * input_height + h_off;
 			for (int h = 0; h < height; ++h) {
@@ -597,7 +606,7 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
 				if (do_mirror) {
 					int top_index_w = top_index_h + width - 1;
 					for (int w = 0; w < width; ++w) {
-						if (param_.is_flow())
+						if (is_flow)
 							transformed_data[top_index_w-w] = 255 - input_data[data_index_h + w];
 						else
 							transformed_data[top_index_w-w] = input_data[data_index_h + w];

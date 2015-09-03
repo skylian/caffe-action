@@ -395,6 +395,8 @@ message TransformationParameter {
   
   //if set to true, it is optical flow field
   optional bool is_flow = 14 [default = false];
+  optional bool has_flow = 15 [default = false];
+  optional int32 flow_point = 16 [default = 0];
 }
 
 // Message that stores parameters shared by loss layers
