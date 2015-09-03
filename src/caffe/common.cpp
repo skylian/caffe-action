@@ -44,7 +44,7 @@ void GlobalInit(int* pargc, char*** pargv) {
   int provided_thread_support;
   MPI_Init_thread(pargc, pargv, MPI_THREAD_MULTIPLE, &provided_thread_support);
 
-  CHECK_EQ(provided_thread_support, MPI_THREAD_MULTIPLE)<<" Cannot activate MPI thread support";
+  CHECK_GE(provided_thread_support, MPI_THREAD_SERIALIZED)<<" Cannot activate MPI thread support";
 
   Caffe::MPI_build_rank();
 
