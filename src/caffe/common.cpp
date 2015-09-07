@@ -41,7 +41,11 @@ void GlobalInit(int* pargc, char*** pargv) {
 
 #ifdef USE_MPI
   //try start MPI communication system
-  MPI_Init(pargc, pargv);
+  int provided_thread_support;
+  MPI_Init_thread(pargc, pargv, MPI_THREAD_MULTIPLE, &provided_thread_support);
+
+  CHECK_GE(provided_thread_support, MPI_THREAD_SERIALIZED)<<" Cannot activate MPI thread support";
+
   Caffe::MPI_build_rank();
 
   if (Caffe::MPI_all_rank() > 1) {
@@ -182,6 +186,9 @@ void Caffe::SetDevice(const int device_id) {
       CURAND_RNG_PSEUDO_DEFAULT));
   CURAND_CHECK(curandSetPseudoRandomGeneratorSeed(Get().curand_generator_,
       cluster_seedgen()));
+#ifdef USE_MPI
+  Get().device_id_ = device_id;
+#endif
 }
 
 void Caffe::DeviceQuery() {
