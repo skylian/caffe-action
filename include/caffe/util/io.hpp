@@ -102,7 +102,7 @@ bool ReadSegmentRGBToDatum(const string& filename, const int label,
     const vector<int> offsets, const int height, const int width, const int length, Datum* datum, bool is_color);
 
 bool ReadSegmentRGBFlowToDatum(const vector<string>& root_folders, const string& filename, const int label,
-    const vector<int> offsets, const int height, const int width, const int length, Datum* datum, bool is_color);
+    const vector<int> offsets, const int height, const int width, const vector<int> &length, Datum* datum, bool is_color);
 
 inline bool ReadImageToDatum(const string& filename, const int label,
     const int height, const int width, const bool is_color, Datum* datum) {

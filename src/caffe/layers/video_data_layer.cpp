@@ -28,16 +28,23 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	const VideoDataParameter& video_data_param = this->layer_param_.video_data_param();
 	const int new_height  = video_data_param.new_height();
 	const int new_width  = video_data_param.new_width();
-	const int new_length  = video_data_param.new_length();
+	new_length_.clear();
+	std::copy(video_data_param.new_length().begin(), video_data_param.new_length().end(), std::back_inserter(new_length_));
+	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
+		if (new_length_.size() == 1)
+			new_length_.push_back(new_length_[0]);
+	else
+		CHECK_EQ(new_length_.size(), 1) << "One new length should be specified for modality FLOW or RGB.";
+	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	const int num_segments = video_data_param.num_segments();
 	const string& source = video_data_param.source();
 	root_folders_.clear();
 	std::copy(video_data_param.root_folder().begin(), video_data_param.root_folder().end(),
 			std::back_inserter(root_folders_));
 	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
-		CHECK_EQ(root_folders_.size(), 2) << "Two root folders could be specified for modality BOTH.";
+		CHECK_EQ(root_folders_.size(), 2) << "Two root folders should be specified for modality BOTH.";
 	else
-		CHECK_EQ(root_folders_.size(), 1) << "One root folder could be specified for modality FLOW or RGB.";
+		CHECK_EQ(root_folders_.size(), 1) << "One root folder should be specified for modality FLOW or RGB.";
 	const int interval = this->layer_param_.video_data_param().interval();
 	if (this->layer_param_.video_data_param().modality() != VideoDataParameter_Modality_RGB)
 		CHECK_GT(interval, 0) << "Flow data must have interval > 0.";
@@ -68,15 +75,15 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	vector<int> offsets;
 	for (int i = 0; i < num_segments; ++i){
 		caffe::rng_t* frame_rng = static_cast<caffe::rng_t*>(frame_prefetch_rng_->generator());
-		int offset = (*frame_rng)() % (average_duration - new_length + 1);
+		int offset = (*frame_rng)() % (average_duration - max_length + 1);
 		offsets.push_back(offset+i*average_duration);
 	}
 	if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_FLOW)
-		CHECK(ReadSegmentFlowToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length, &datum));
+		CHECK(ReadSegmentFlowToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length_[0], &datum));
 	else if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_RGB)
-		CHECK(ReadSegmentRGBToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length, &datum, true));
+		CHECK(ReadSegmentRGBToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length_[0], &datum, true));
 	else
-		CHECK(ReadSegmentRGBFlowToDatum(root_folders_, lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length, &datum, true));
+		CHECK(ReadSegmentRGBFlowToDatum(root_folders_, lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length_, &datum, true));
 	const int crop_size = this->layer_param_.transform_param().crop_size();
 	const int batch_size = this->layer_param_.video_data_param().batch_size();
 	if (crop_size > 0){
@@ -114,10 +121,16 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 	const int batch_size = video_data_param.batch_size();
 	const int new_height = video_data_param.new_height();
 	const int new_width = video_data_param.new_width();
-	const int new_length = video_data_param.new_length();
 	const int num_segments = video_data_param.num_segments();
 	const int lines_size = lines_.size();
-
+	new_length_.clear();
+	std::copy(video_data_param.new_length().begin(), video_data_param.new_length().end(), std::back_inserter(new_length_));
+	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
+		if (new_length_.size() == 1)
+			new_length_.push_back(new_length_[0]);
+	else
+		CHECK_EQ(new_length_.size(), 1) << "One new length should be specified for modality FLOW or RGB.";
+	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	root_folders_.clear();
 	std::copy(video_data_param.root_folder().begin(), video_data_param.root_folder().end(),
 			std::back_inserter(root_folders_));
@@ -129,24 +142,24 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 		for (int i = 0; i < num_segments; ++i){
 			if (this->phase_==TRAIN){
 				caffe::rng_t* frame_rng = static_cast<caffe::rng_t*>(frame_prefetch_rng_->generator());
-				int offset = (*frame_rng)() % (average_duration - new_length + 1);
+				int offset = (*frame_rng)() % (average_duration - max_length + 1);
 				offsets.push_back(offset+i*average_duration);
 			} else{
-				offsets.push_back(int((average_duration-new_length+1)/2 + i*average_duration));
+				offsets.push_back(int((average_duration-max_length+1)/2 + i*average_duration));
 			}
 		}
 		if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_FLOW){
-			if(!ReadSegmentFlowToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length, &datum)) {
+			if(!ReadSegmentFlowToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length_[0], &datum)) {
 				continue;
 			}
 		} else if (this->layer_param_.video_data_param().modality() == VideoDataParameter_Modality_RGB){
-			if(!ReadSegmentRGBToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length, &datum, true)) {
+			if(!ReadSegmentRGBToDatum(root_folders_[0]+lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length_[0], &datum, true)) {
 				continue;
 			}
 		} else {
-			if(!ReadSegmentRGBFlowToDatum(root_folders_, lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length, &datum, true)) {
-				continue;
+			if(!ReadSegmentRGBFlowToDatum(root_folders_, lines_[lines_id_].first, lines_[lines_id_].second, offsets, new_height, new_width, new_length_, &datum, true)) {
 			}
+				continue;
 		}
 
 		int offset1 = this->prefetch_data_.offset(item_id);

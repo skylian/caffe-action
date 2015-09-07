@@ -408,18 +408,18 @@ bool ReadSegmentFlowToDatum(const string& filename, const int label,
 }
 
 bool ReadSegmentRGBFlowToDatum(const vector<string>& root_folders, const string& filename, const int label,
-		const vector<int> offsets, const int height, const int width, const int length, Datum* datum, bool is_color){
+		const vector<int> offsets, const int height, const int width, const vector<int> &length, Datum* datum, bool is_color){
 	cv::Mat cv_img, cv_img_x, cv_img_y;
 	string* datum_string;
 	char tmp[30];
 	int cv_read_flag = (is_color ? CV_LOAD_IMAGE_COLOR :
 			CV_LOAD_IMAGE_GRAYSCALE);
 	int num_channels_img = (is_color ? 3 : 1);
-	int num_channels = 2 + num_channels_img;
+	int total_length = 2*length[1] + num_channels_img*length[0];
 
 	for (int i = 0; i < offsets.size(); ++i){
 		int offset = offsets[i];
-		for (int file_id = 1; file_id < length+1; ++file_id){
+		for (int file_id = 1; file_id < length[0]+1; ++file_id){
 			sprintf(tmp,"image_%04d.jpg",int(file_id+offset));
 			string filename_t = root_folders[0] + filename + "/" + tmp;
 			cv::Mat cv_img_origin = cv::imread(filename_t, cv_read_flag);
@@ -433,7 +433,7 @@ bool ReadSegmentRGBFlowToDatum(const vector<string>& root_folders, const string&
 				cv_img = cv_img_origin;
 			}
 			if (file_id==1 && i==0){
-				datum->set_channels(num_channels*length*offsets.size());
+				datum->set_channels(total_length*offsets.size());
 				datum->set_height(cv_img.rows);
 				datum->set_width(cv_img.cols);
 				datum->set_label(label);
@@ -464,7 +464,7 @@ bool ReadSegmentRGBFlowToDatum(const vector<string>& root_folders, const string&
 
 	for (int i = 0; i < offsets.size(); ++i){
 		int offset = offsets[i];
-		for (int file_id = 1; file_id < length+1; ++file_id){
+		for (int file_id = 1; file_id < length[1]+1; ++file_id){
 			sprintf(tmp,"flow_x_%04d.jpg",int(file_id+offset));
 			string filename_x = root_folders[1] + filename + "/" + tmp;
 			cv::Mat cv_img_origin_x = cv::imread(filename_x, CV_LOAD_IMAGE_GRAYSCALE);
