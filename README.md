@@ -1,8 +1,13 @@
 # Action Recognition with Deep Learning
 
-This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159).
+This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
-### Features:
+### Updates
+- Sep. 7, 2015
+* New machanism for parallel comminucation. Parallel overhead further reduced.
+* Batch normalization, courtesy of @Cysu
+
+### Features
 - `VideoDataLayer` for inputing video data
 - Training on optical flow data. 
 - Data augmentation with fixed corner cropping and multi-scale cropping
