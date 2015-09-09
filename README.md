@@ -4,7 +4,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 
 ### Updates
 - Sep. 7, 2015
-  * New machanism for parallel comminucation. Parallel overhead further reduced.
+  * New mechanism for parallel comminucation reduced parallel overhead.
   * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
 
 ### Features
