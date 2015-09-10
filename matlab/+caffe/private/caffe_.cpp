@@ -301,12 +301,34 @@ static void net_forward(MEX_ARGS) {
   net->ForwardPrefilled();
 }
 
+// Usage: caffe_('net_forward', hNet, layer_id)
+static void net_forward_to(MEX_ARGS) {
+  mxCHECK(nrhs == 2 && mxIsStruct(prhs[0]) && 
+          mxIsNumeric(prhs[1]) && mxGetNumberOfElements(prhs[1])==1,
+      "Usage: caffe_('net_forward', hNet, layer_id)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  int layer_id = static_cast<int>(mxGetScalar(prhs[1]));
+  net->ForwardTo(layer_id);
+}
+
 // Usage: caffe_('net_backward', hNet)
 static void net_backward(MEX_ARGS) {
   mxCHECK(nrhs == 1 && mxIsStruct(prhs[0]),
       "Usage: caffe_('net_backward', hNet)");
   Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
   net->Backward();
+}
+
+// Usage: caffe_('net_backward_from', hNet, layer_id)
+static void net_backward_from_to(MEX_ARGS) {
+  mxCHECK(nrhs == 3 && mxIsStruct(prhs[0]) && 
+          mxIsNumeric(prhs[1]) && mxGetNumberOfElements(prhs[1])==1 &&
+          mxIsNumeric(prhs[2]) && mxGetNumberOfElements(prhs[2])==1,
+      "Usage: caffe_('net_backward_from', hNet, layer_id)");
+  Net<float>* net = handle_to_ptr<Net<float> >(prhs[0]);
+  int from_id = static_cast<int>(mxGetScalar(prhs[1]));
+  int to_id = static_cast<int>(mxGetScalar(prhs[2]));
+  net->BackwardFromTo(from_id, to_id);
 }
 
 // Usage: caffe_('net_copy_from', hNet, weights_file)
@@ -497,7 +519,9 @@ static handler_registry handlers[] = {
   { "get_net",            get_net         },
   { "net_get_attr",       net_get_attr    },
   { "net_forward",        net_forward     },
+  { "net_forward_to",     net_forward_to  },
   { "net_backward",       net_backward    },
+  { "net_backward_from_to",  net_backward_from_to},
   { "net_copy_from",      net_copy_from   },
   { "net_reshape",        net_reshape     },
   { "net_save",           net_save        },

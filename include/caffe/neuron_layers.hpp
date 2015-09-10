@@ -475,6 +475,31 @@ class ReLULayer : public NeuronLayer<Dtype> {
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 };
 
+/*
+ * @brief Rectified Linear Feedback Unit non-linearity @f$ y = \max(0, x) * \max(0, diff_y) @f$.
+ */
+template <typename Dtype>
+class ReLUPlusLayer : public NeuronLayer<Dtype> {
+ public:
+  explicit ReLUPlusLayer(const LayerParameter& param)
+      : NeuronLayer<Dtype>(param) {}
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+        const vector<Blob<Dtype>*>& top);
+  virtual inline const char* type() const { return "ReLUPlus"; }
+
+ protected:
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+  Blob<Dtype> activations_;
+};
+
 #ifdef USE_CUDNN
 /**
  * @brief CuDNN acceleration of ReLULayer.

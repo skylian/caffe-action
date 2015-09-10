@@ -102,6 +102,20 @@ classdef Net < handle
         res{n} = self.blobs(self.outputs{n}).get_data();
       end
     end
+    function forward_to(self, input_data, layer_name)
+      CHECK(ischar(layer_name), 'layer_name must be a string');
+      CHECK(iscell(input_data), 'input_data must be a cell array');
+      CHECK(length(input_data) == length(self.inputs), ...
+        'input data cell length must match input blob number');
+      CHECK(isKey(self.name2layer_index, layer_name),...
+          ['no layer named ', layer_name]);
+      layer_id = self.name2layer_index(layer_name);
+      % copy data to input blobs
+      for n = 1:length(self.inputs)
+        self.blobs(self.inputs{n}).set_data(input_data{n});
+      end
+      caffe_('net_forward_to', self.hNet_self, layer_id-1);
+    end
     function res = backward(self, output_diff)
       CHECK(iscell(output_diff), 'output_diff must be a cell array');
       CHECK(length(output_diff) == length(self.outputs), ...
@@ -116,6 +130,29 @@ classdef Net < handle
       for n = 1:length(self.inputs)
         res{n} = self.blobs(self.inputs{n}).get_diff();
       end
+    end
+    function res = backward_from(self, layer_name)
+      CHECK(ischar(layer_name), 'layer_name must be a string');
+      CHECK(isKey(self.name2layer_index, layer_name),...
+          ['no layer named ', layer_name]);
+      layer_id = self.name2layer_index(layer_name);
+      caffe_('net_backward_from_to', self.hNet_self, layer_id-1, 0);
+      % retrieve diff from input blobs
+      res = cell(length(self.inputs), 1);
+      for n = 1:length(self.inputs)
+        res{n} = self.blobs(self.inputs{n}).get_diff();
+      end
+    end
+    function backward_from_to(self, from_layer, to_layer)
+      CHECK(ischar(from_layer), 'from_layer must be a string');
+      CHECK(ischar(to_layer), 'to_layer must be a string');
+      CHECK(isKey(self.name2layer_index, from_layer),...
+          ['no layer named ', from_layer]);
+      CHECK(isKey(self.name2layer_index, to_layer),...
+          ['no layer named ', to_layer]);
+      from_id = self.name2layer_index(from_layer);
+      to_id = self.name2layer_index(to_layer);
+      caffe_('net_backward_from_to', self.hNet_self, from_id-1, to_id-1);
     end
     function copy_from(self, weights_file)
       CHECK(ischar(weights_file), 'weights_file must be a string');
