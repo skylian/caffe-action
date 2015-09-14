@@ -187,14 +187,12 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       for (int top_id = 0; top_id < top_id_vecs_[layer_id].size(); ++top_id) {
         blob_need_backward_[top_id_vecs_[layer_id][top_id]] = true;
 
-        #ifdef USE_MPI
-        //special treament for gather layer
-        //This layer should be transparent to bp.
+        //special treatment for "Gather" layer
+        //This layer should be transparent to bp inferring.
         if (strcmp(layers_[layer_id]->type(), "Gather")==0){
           blob_need_backward_[top_id_vecs_[layer_id][top_id]]
               = blob_need_backward_[bottom_id_vecs_[layer_id][top_id]];
         }
-        #endif
       }
     }
   }
