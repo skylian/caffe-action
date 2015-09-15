@@ -328,11 +328,12 @@ protected:
 	}
 #endif
 
-	vector<std::pair<std::string, int> > lines_;
+	vector<std::pair<std::string, vector<int> > > lines_;
 	vector<int> lines_duration_;
 	vector<int> new_length_;
 	vector<string> root_folders_;
 	int lines_id_;
+	int num_labels_;
 };
 
 

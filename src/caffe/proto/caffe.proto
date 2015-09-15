@@ -269,7 +269,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 145 (last added: mat_write_param)
+// LayerParameter next available layer-specific ID: 146 (last added: binary_block_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -321,6 +321,7 @@ message LayerParameter {
   optional ConcatParameter concat_param = 104;
   optional ContrastiveLossParameter contrastive_loss_param = 105;
   optional ConvolutionParameter convolution_param = 106;
+  optional BinaryBlockParameter binary_block_param = 145;
   optional DataParameter data_param = 107;
   optional DropoutParameter dropout_param = 108;
   optional DummyDataParameter dummy_data_param = 109;
@@ -443,6 +444,10 @@ message ConcatParameter {
 
   // DEPRECATED: alias for "axis" -- does not support negative indexing.
   optional uint32 concat_dim = 1 [default = 1];
+}
+
+message BinaryBlockParameter {
+  required string block_file = 1;
 }
 
 message ContrastiveLossParameter {
@@ -993,6 +998,7 @@ message VideoDataParameter{
   optional Modality modality = 13 [default = FLOW];
   repeated string root_folder = 14;
   optional uint32 interval = 15 [default = 0];
+  optional uint32 num_labels = 16 [default = 1];
 }
 
 // DEPRECATED: use LayerParameter.
