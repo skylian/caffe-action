@@ -92,8 +92,7 @@ void fillCropSize(int input_height, int input_width,
 
 
 template<typename Dtype>
-void DataTransformer<Dtype>::Transform(const Datum& datum,
-		Dtype* transformed_data) {
+void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_data) {
 
 
 	const string& data = datum.data();
@@ -357,8 +356,7 @@ void DataTransformer<Dtype>::Transform(const vector<cv::Mat> & mat_vector,
 }
 
 template<typename Dtype>
-void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
-		Blob<Dtype>* transformed_blob) {
+void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img, Blob<Dtype>* transformed_blob) {
 	const int crop_size = param_.crop_size();
 	const int img_channels = cv_img.channels();
 	const int img_height = cv_img.rows;
@@ -507,8 +505,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 }
 
 template<typename Dtype>
-void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob,
-		Blob<Dtype>* transformed_blob) {
+void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob, Blob<Dtype>* transformed_blob) {
 	const int crop_size = param_.crop_size();
 	const int input_num = input_blob->num();
 	const int input_channels = input_blob->channels();

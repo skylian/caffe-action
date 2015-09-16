@@ -18,6 +18,13 @@
 
 #ifdef USE_MPI
   #include "mpi.h"
+
+#define MPI_CHECK(cond) \
+do { \
+    int status = cond; \
+    CHECK_EQ(status, MPI_SUCCESS) << " " \
+      << "MPI Error Code: " << status; \
+  } while (0)
 #endif
 
 #include "caffe/util/device_alternate.hpp"
@@ -186,6 +193,9 @@ class Caffe {
     Get().mpi_local_rank_ = local_rank;
     //MPI_Comm_rank(MPI_COMM_WORLD, &(Get().mpi_local_rank_)); 
   }
+  inline static int device_id(){return Get().device_id_;}
+  inline static int remaining_sub_iter(){return Get().remaining_sub_iter_;}
+  inline static void set_remaining_sub_iter(int n){Get().remaining_sub_iter_ = n;}
 #endif
 
  protected:
@@ -200,6 +210,8 @@ class Caffe {
   PARALLEL_MODE parallel_mode_;
   int mpi_my_rank_, mpi_local_rank_;
   int mpi_all_rank_;
+  int device_id_;
+  int remaining_sub_iter_;
 #endif
 
   Brew mode_;

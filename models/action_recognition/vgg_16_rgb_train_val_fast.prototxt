@@ -527,6 +527,9 @@ layer {
   type: "SoftmaxWithLoss"
   bottom: "fc8-1"
   bottom: "label"
+  include {
+    phase: TRAIN
+  }
 }
 layer {
   name: "loss"
