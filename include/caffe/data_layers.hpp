@@ -115,21 +115,37 @@ public:
 	virtual inline int MinTopBlobs() const { return 1; }
 	virtual inline int MaxTopBlobs() const { return 2; }
 
+
 protected:
 	virtual void InternalThreadEntry();
 
 #ifdef USE_MPI
-	inline virtual void advance_cursor(){
-		cursor_->Next();
-		if (!cursor_->valid()) {
-			DLOG(INFO) << "Restarting data prefetching from start.";
-			cursor_->SeekToFirst();
+	inline virtual void advance_cursor() {
+		if (cur_input_mode_ == SEQUENCE) {
+			cursor_->Next();
+			if (!cursor_->valid()) {
+				DLOG(INFO) << "Restarting data prefetching from start.";
+				cursor_->SeekToFirst();
+			}
+		}else if (cur_input_mode_ == SHUFFLE){
+			shuffle_cursor_++;
+			if (shuffle_cursor_ == shuffle_key_pool_.end()){
+				DLOG(INFO) << "Restarting data prefetching (shuffle mode) from start.";
+				shuffle_cursor_ = shuffle_key_pool_.begin();
+			}
 		}
 	}
 #endif
 
 	shared_ptr<db::DB> db_;
 	shared_ptr<db::Cursor> cursor_;
+
+	enum InputMode{
+			SEQUENCE, SHUFFLE
+	};
+	InputMode cur_input_mode_;
+	vector<string> shuffle_key_pool_;
+	vector<string>::iterator shuffle_cursor_;
 };
 
 /**

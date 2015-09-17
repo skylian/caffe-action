@@ -513,6 +513,8 @@ message DataParameter {
   optional bool mirror = 6 [default = false];
   // Force the encoded image to have 3 color channels
   optional bool force_encoded_color = 9 [default = false];
+  // Enable within-shared shuffling
+  optional bool shuffle = 10 [default = false];
 }
 
 message DropoutParameter {
