@@ -102,7 +102,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 
 	const int crop_size = param_.crop_size();
 	const Dtype scale = param_.scale();
-	const bool do_mirror = param_.mirror();// && Rand(2);
+	const bool do_mirror = param_.mirror() && Rand(2);
 	const bool has_mean_file = param_.has_mean_file();
 	const bool has_uint8 = data.size() > 0;
 	const bool has_mean_values = mean_values_.size() > 0;
@@ -220,24 +220,24 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 				}
 				if (need_imgproc){
 					if (has_uint8){
-						if (is_flow && do_mirror && c % 2 == 0)
+						if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 							datum_element = 255 - static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
 						else
 							datum_element = static_cast<Dtype>(multi_scale_bufferM.at<uint8_t>(h, w));
 					}else {
-						if (is_flow && do_mirror && c % 2 == 0)
+						if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 							datum_element = 255 - static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
 						else
 							datum_element = static_cast<Dtype>(multi_scale_bufferM.at<float>(h, w));
 					}
 				}else {
 					if (has_uint8) {
-						if (is_flow && do_mirror && c % 2 == 0)
+						if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 							datum_element = 255 - static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
 						else
 							datum_element = static_cast<Dtype>(static_cast<uint8_t>(data[data_index]));
 					} else {
-						if (is_flow && do_mirror && c % 2 == 0)
+						if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 							datum_element = 255 - datum.float_data(data_index);
 						else
 							datum_element = datum.float_data(data_index);
@@ -478,7 +478,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img, Blob<Dtype>* trans
 					int mean_index = (do_multi_scale)?
 							(c * img_height  + h) * img_width +  w
 							:(c * img_height + h_off + h) * img_width +  w_off + w;
-					if (is_flow && do_mirror && c % 2 == 0)
+					if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 						transformed_data[top_index] =
 								(255 - pixel - mean[mean_index]) * scale;
 					else
@@ -486,14 +486,14 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img, Blob<Dtype>* trans
 								(pixel - mean[mean_index]) * scale;
 				} else {
 					if (has_mean_values) {
-						if (is_flow && do_mirror && c % 2 == 0)
+						if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 							transformed_data[top_index] =
 									(255 - pixel - mean_values_[c]) * scale;
 						else
 							transformed_data[top_index] =
 									(pixel - mean_values_[c]) * scale;
 					} else {
-						if (is_flow && do_mirror && c % 2 == 0)
+						if (is_flow && do_mirror && (c-param_.flow_point()) % 2 == 0)
 							transformed_data[top_index] = (255 - pixel) * scale;
 						else
 							transformed_data[top_index] = pixel * scale;
@@ -603,7 +603,7 @@ void DataTransformer<Dtype>::Transform(Blob<Dtype>* input_blob, Blob<Dtype>* tra
 				if (do_mirror) {
 					int top_index_w = top_index_h + width - 1;
 					for (int w = 0; w < width; ++w) {
-						if (is_flow && c % 2 == 0)
+						if (is_flow && (c-param_.flow_point()) % 2 == 0)
 							transformed_data[top_index_w-w] = 255 - input_data[data_index_h + w];
 						else
 							transformed_data[top_index_w-w] = input_data[data_index_h + w];

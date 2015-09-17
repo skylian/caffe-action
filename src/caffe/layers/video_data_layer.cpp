@@ -30,12 +30,11 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	const int new_width  = video_data_param.new_width();
 	new_length_.clear();
 	std::copy(video_data_param.new_length().begin(), video_data_param.new_length().end(), std::back_inserter(new_length_));
-	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH) {
-		if (new_length_.size() == 1)
-			new_length_.push_back(new_length_[0]);
-	}
+	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
+		CHECK_EQ(new_length_.size(),2) << "Two new_length has to be specified for modality BOTH.";
 	else
-		CHECK_EQ(new_length_.size(), 1) << "One new length should be specified for modality FLOW or RGB.";
+		CHECK_EQ(new_length_.size(), 1) << "One new_length should be specified for modality FLOW or RGB.";
+
 	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	const int num_segments = video_data_param.num_segments();
 	const string& source = video_data_param.source();
@@ -129,12 +128,10 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 	const int lines_size = lines_.size();
 	new_length_.clear();
 	std::copy(video_data_param.new_length().begin(), video_data_param.new_length().end(), std::back_inserter(new_length_));
-	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH) {
-		if (new_length_.size() == 1)
-			new_length_.push_back(new_length_[0]);
-	}
-	else
-		CHECK_EQ(new_length_.size(), 1) << "One new length should be specified for modality FLOW or RGB.";
+	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
+			CHECK_EQ(new_length_.size(),2) << "Two new_length has to be specified for modality BOTH.";
+		else
+			CHECK_EQ(new_length_.size(), 1) << "One new_length should be specified for modality FLOW or RGB.";
 	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	root_folders_.clear();
 	std::copy(video_data_param.root_folder().begin(), video_data_param.root_folder().end(),
