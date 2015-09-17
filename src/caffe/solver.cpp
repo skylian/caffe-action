@@ -533,6 +533,7 @@ void Solver<Dtype>::Restore(const char* state_file) {
 //      zero by the max_iter. return base_lr (1 - iter/max_iter) ^ (power)
 //    - sigmoid: the effective learning rate follows a sigmod decay
 //      return base_lr ( 1/(1 + exp(-gamma * (iter - stepsize))))
+//    - exp10: return base_lr * (-iter/stepsize)
 //
 // where base_lr, max_iter, gamma, step, stepvalue and power are defined
 // in the solver parameter protocol buffer, and iter is the current iteration.
@@ -569,7 +570,10 @@ Dtype SGDSolver<Dtype>::GetLearningRate() {
     rate = this->param_.base_lr() * (Dtype(1.) /
         (Dtype(1.) + exp(-this->param_.gamma() * (Dtype(this->iter_) -
           Dtype(this->param_.stepsize())))));
-  } else {
+  } else if (lr_policy == "exp10"){
+    rate = this->param_.base_lr()
+           * pow(Dtype(10.), Dtype(-1 * this->iter_) * Dtype(this->param_.stepsize()));
+  }else {
     LOG(FATAL) << "Unknown learning rate policy: " << lr_policy;
   }
   return rate;
