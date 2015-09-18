@@ -765,6 +765,9 @@ message PowerParameter {
 message PythonParameter {
   optional string module = 1;
   optional string layer = 2;
+
+  //param_str to be sent to the python layer
+  optional string param_str = 3;
 }
 
 // Message that stores parameters used by ReductionLayer

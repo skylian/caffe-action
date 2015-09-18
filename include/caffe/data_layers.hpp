@@ -16,6 +16,7 @@
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/db.hpp"
+#include "caffe/util/rng.hpp"
 
 namespace caffe {
 
@@ -126,6 +127,13 @@ protected:
 			if (!cursor_->valid()) {
 				DLOG(INFO) << "Restarting data prefetching from start.";
 				cursor_->SeekToFirst();
+
+				if (this->layer_param_.data_param().shuffle() == true){
+					LOG(INFO)<<"Entering shuffling mode after first epoch";
+					cur_input_mode_ = SHUFFLE;
+					shuffle(shuffle_key_pool_.begin(), shuffle_key_pool_.end());
+					shuffle_cursor_ = shuffle_key_pool_.begin();
+				}
 			}
 		}else if (cur_input_mode_ == SHUFFLE){
 			shuffle_cursor_++;
