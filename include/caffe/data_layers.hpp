@@ -136,11 +136,7 @@ protected:
 				}
 			}
 		}else if (cur_input_mode_ == SHUFFLE){
-			shuffle_cursor_++;
-			if (shuffle_cursor_ == shuffle_key_pool_.end()){
-				DLOG(INFO) << "Restarting data prefetching (shuffle mode) from start.";
-				shuffle_cursor_ = shuffle_key_pool_.begin();
-			}
+			//NO OP
 		}
 	}
 #endif
