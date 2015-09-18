@@ -572,7 +572,7 @@ Dtype SGDSolver<Dtype>::GetLearningRate() {
           Dtype(this->param_.stepsize())))));
   } else if (lr_policy == "exp10"){
     rate = this->param_.base_lr()
-           * pow(Dtype(10.), Dtype(-1 * this->iter_) * Dtype(this->param_.stepsize()));
+           * pow(Dtype(10.), Dtype(-1 * this->iter_) / Dtype(this->param_.stepsize()));
   }else {
     LOG(FATAL) << "Unknown learning rate policy: " << lr_policy;
   }
