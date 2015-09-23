@@ -37,7 +37,7 @@ void CuDNNConvolutionLayer<Dtype>::Forward_gpu(
         filter_desc_,
         conv_descs_[i],
         top_descs_[i],
-        CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+        CUDNN_CONVOLUTION_FWD_PREFER_FASTEST,
         workspace_limit_bytes,  // memoryLimitInBytes,
         &algo));
 
@@ -122,11 +122,12 @@ void CuDNNConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       // Gradient w.r.t. weights.
       if (this->param_propagate_down_[0]) {
         const Dtype* bottom_data = bottom[i]->gpu_data();
-        CUDNN_CHECK(cudnnConvolutionBackwardFilter(handle_[1*this->group_ + g],
+        CUDNN_CHECK(cudnnConvolutionBackwardFilter_v3(handle_[1*this->group_ + g],
               cudnn::dataType<Dtype>::one,
               bottom_descs_[i], bottom_data + bottom_offset_ * g,
               top_descs_[i],    top_diff + top_offset_ * g,
               conv_descs_[i],
+	      CUDNN_CONVOLUTION_BWD_FILTER_ALGO_0, NULL, 0,
               cudnn::dataType<Dtype>::one,
               filter_desc_, weight_diff + weight_offset_ * g));
       }
@@ -137,11 +138,12 @@ void CuDNNConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
           weight = this->blobs_[0]->gpu_data();
         }
         Dtype* bottom_diff = bottom[i]->mutable_gpu_diff();
-        CUDNN_CHECK(cudnnConvolutionBackwardData(handle_[2*this->group_ + g],
+        CUDNN_CHECK(cudnnConvolutionBackwardData_v3(handle_[2*this->group_ + g],
               cudnn::dataType<Dtype>::one,
               filter_desc_, weight + weight_offset_ * g,
               top_descs_[i], top_diff + top_offset_ * g,
               conv_descs_[i],
+	      CUDNN_CONVOLUTION_BWD_DATA_ALGO_0, NULL, 0,
               cudnn::dataType<Dtype>::zero,
               bottom_descs_[i], bottom_diff + bottom_offset_ * g));
       }
