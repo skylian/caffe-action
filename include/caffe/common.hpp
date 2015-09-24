@@ -187,12 +187,21 @@ class Caffe {
   inline static void set_remaining_sub_iter(int n){Get().remaining_sub_iter_ = n;}
 #endif
 
+#ifdef USE_CUDNN
+  inline static int cudnn_mem_richness(){return Get().cudnn_mem_richness_;}
+  inline static void set_cudnn_mem_richness(int richness){Get().cudnn_mem_richness_ = richness;}
+#endif
+
  protected:
 #ifndef CPU_ONLY
   cublasHandle_t cublas_handle_;
   curandGenerator_t curand_generator_;
 #endif
   shared_ptr<RNG> random_generator_;
+
+#ifdef USE_CUDNN
+  int cudnn_mem_richness_;
+#endif
 
 #ifdef USE_MPI
 
