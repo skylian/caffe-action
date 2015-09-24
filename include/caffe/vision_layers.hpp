@@ -251,8 +251,17 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<Dtype> {
   cudnnFilterDescriptor_t      filter_desc_;
   vector<cudnnConvolutionDescriptor_t> conv_descs_;
   int bottom_offset_, top_offset_, weight_offset_, bias_offset_;
-  size_t workspaceSizeInBytes;
-  void *workspace;
+
+  // algorithms for forward and backwards convolutions
+  cudnnConvolutionFwdAlgo_t *fwd_algo_;
+  cudnnConvolutionBwdFilterAlgo_t *bwd_filter_algo_;
+  cudnnConvolutionBwdDataAlgo_t *bwd_data_algo_;
+  size_t *workspace_fwd_sizes_;
+  size_t *workspace_bwd_data_sizes_;
+  size_t *workspace_bwd_filter_sizes_;
+  size_t workspaceSizeInBytes;  // size of underlying storage
+  shared_ptr<SyncedMemory> workspaceData;  // underlying storage
+  size_t *workspace_offset;  // offset into workspaceData
 };
 #endif
 

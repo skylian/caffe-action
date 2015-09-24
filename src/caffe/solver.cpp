@@ -38,6 +38,9 @@ void Solver<Dtype>::Init(const SolverParameter& param) {
   if (param_.random_seed() >= 0) {
     Caffe::set_random_seed(param_.random_seed());
   }
+#ifdef USE_CUDNN
+  Caffe::set_cudnn_mem_richness(param_.richness());
+#endif
   // Scaffolding code
   InitTrainNet();
   InitTestNets();
