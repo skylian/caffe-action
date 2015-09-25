@@ -3,15 +3,18 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
+- Sep. 27, 2015
+  * Experimental support for [cuDNN v3](https://developer.nvidia.com/cudnn).
 - Sep. 7, 2015
   * New mechanism for parallel comminucation reduced parallel overhead.
   * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
 
 ### Features
-- `VideoDataLayer` for inputing video data
+- `VideoDataLayer` for inputing video data.
 - Training on optical flow data. 
-- Data augmentation with fixed corner cropping and multi-scale cropping
+- Data augmentation with fixed corner cropping and multi-scale cropping.
 - Parallel training with multiple GPUs.
+- cuDNNv3 integration (experimental).
 
 ### Usage
 Generally it's the same as the original caffe. Please see the original README. 
