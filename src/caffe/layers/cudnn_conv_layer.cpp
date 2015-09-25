@@ -186,7 +186,7 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
   max_workspace = std::max(max_workspace, total_workspace_bwd_filter);
   // ensure all groups have enough workspace
   size_t total_max_workspace = max_workspace *
-                               (this->group_ * CUDNN_STREAMS_PER_GROUP);
+                               (this->group_ * (this->phase_==TRAIN)?CUDNN_STREAMS_PER_GROUP:1);
 
   // this is the total amount of storage needed over all groups + streams
   if (total_max_workspace > workspaceSizeInBytes) {
