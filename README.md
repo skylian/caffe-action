@@ -3,8 +3,8 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
-- Sep. 27, 2015
-  * Experimental support for [cuDNN v3](https://developer.nvidia.com/cudnn).
+- Sep. 30, 2015
+  * Full support for [cuDNN v3](https://developer.nvidia.com/cudnn). 
 - Sep. 7, 2015
   * New mechanism for parallel comminucation reduced parallel overhead.
   * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
@@ -14,7 +14,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 - Training on optical flow data. 
 - Data augmentation with fixed corner cropping and multi-scale cropping.
 - Parallel training with multiple GPUs.
-- cuDNNv3 integration (experimental).
+- cuDNNv3 integration.
 
 ### Usage
 Generally it's the same as the original caffe. Please see the original README. 
@@ -30,8 +30,11 @@ Please see following instruction for accessing features above. More detailed doc
   - Set `multi_scale` to `true` in `transform_param`
   - In `transform_param`, specify `scale_ratios` as a list of floats smaller than one, default is `[1, .875, .75, .65]`
   - In `transform_param`, specify `max_distort` to an integer, which will limit the aspect ratio distortion, default to `1`
+- cuDNN v3
+ - Current default config for cuDNNv3 yields a reasonable speed up over cuDNNv2. You can get this by simply replacing the library files.
+ - If you have plenty of GPU memory, there is parameter `richness` in the solver protobuf. Setting it to a number higher than `1`, e.g. `10` or `20`, will potentially further accelerate the computation, but this will cost a significant amount of GPU memory.
 - Training with multiple GPUs
-  - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda)). **Remember to compile your OpenMPI with option `--with-cuda`**
+  - Requires OpenMPI > 1.7.4 ([Why?](https://www.open-mpi.org/faq/?category=runcuda)). **Remember to compile your OpenMPI with option `--with-cuda`**
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
   - Compile using cmake and use `mpirun` to launch caffe executable, like 
 ```bash
@@ -40,7 +43,6 @@ cmake .. -DUSE_MPI=ON
 make && make install
 mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File> [--weights=<Pretrained caffemodel>]
 ```
-
 **Note**: actual batch_size will be `num_device` times `batch_size` specified in network's prototxt.
 
 ### Working Examples
