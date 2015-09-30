@@ -4,7 +4,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 
 ### Updates
 - Sep. 30, 2015
-  * Full support for [cuDNN v3](https://developer.nvidia.com/cudnn). 
+  * Support for [cuDNN v3](https://developer.nvidia.com/cudnn). 
 - Sep. 7, 2015
   * New mechanism for parallel comminucation reduced parallel overhead.
   * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
