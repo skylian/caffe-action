@@ -169,9 +169,9 @@ void Caffe::set_random_seed(const unsigned int seed) {
 
 void Caffe::SetDevice(const int device_id) {
   int current_device;
-  std::cout<<"Setting device "<<device_id<<"\n";
-  CUDA_CHECK(cudaGetDevice(&current_device));
+  LOG(INFO) << "Setting device "<< device_id;
 
+  CUDA_CHECK(cudaGetDevice(&current_device));
   if (current_device == device_id && Get().cublas_handle_ && Get().curand_generator_) {
     return;
   }
