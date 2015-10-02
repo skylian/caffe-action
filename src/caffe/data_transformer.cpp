@@ -189,6 +189,8 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 	bool is_flow;
 	for (int c = 0; c < datum_channels; ++c) {
 		// image resize etc needed
+		int mean_jitter_range = param_.mean_jitter();
+		int mean_jitter = Rand(2*mean_jitter_range+1) - mean_jitter_range;
 		if (need_imgproc){
 			cv::Mat M(datum_height, datum_width, has_uint8?CV_8UC1:CV_32FC1);
 
@@ -247,15 +249,15 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 					if (do_multi_scale) {
 						int fixed_data_index = (c * datum_height +  h) * datum_width + w;
 						transformed_data[top_index] =
-								(datum_element - mean[fixed_data_index]) * scale;
+								(datum_element - mean[fixed_data_index] + mean_jitter) * scale;
 					}else{
 						transformed_data[top_index] =
-								(datum_element - mean[data_index]) * scale;
+								(datum_element - mean[data_index] + mean_jitter) * scale;
 					}
 				} else {
 					if (has_mean_values) {
 						transformed_data[top_index] =
-								(datum_element - mean_values_[c]) * scale;
+								(datum_element - mean_values_[c] + mean_jitter) * scale;
 					} else {
 						transformed_data[top_index] = datum_element * scale;
 					}

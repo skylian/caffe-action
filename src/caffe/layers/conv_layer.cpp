@@ -41,7 +41,7 @@ void ConvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 			Dtype* top_data = top[i-1]->mutable_cpu_data();
 			for (int n = 0; n < this->num_; ++n) {
 				this->forward_cpu_gemm(bottom_data + bottom[i]->offset(n), weight + bottom[0]->offset(n),
-						top_data + top[i]->offset(n));
+						top_data + top[i-1]->offset(n));
 			}
 		}
 	}
@@ -83,6 +83,7 @@ void ConvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 	} else {
 		const Dtype* weight = bottom[0]->cpu_data();
 		Dtype* weight_diff = bottom[0]->mutable_cpu_diff();
+
 		for (int i = 0; i < top.size(); ++i) {
 			const Dtype* top_diff = top[i]->cpu_diff();
 			if (propagate_down[0] || propagate_down[i+1]) {

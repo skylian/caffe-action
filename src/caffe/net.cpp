@@ -818,8 +818,8 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
     CHECK_EQ(target_blobs.size(), source_layer.blobs_size())
         << "Incompatible number of blobs for layer " << source_layer_name;
     for (int j = 0; j < target_blobs.size(); ++j) {
-      const bool kReshape = false;
-      target_blobs[j]->FromProto(source_layer.blobs(j), kReshape);
+      const bool kReshape = source_layer.check_shape();
+      target_blobs[j]->FromProto(source_layer.blobs(j), !kReshape);
     }
   }
 }

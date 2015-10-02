@@ -15,10 +15,10 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 	int id;
 	if (dynamic_conv) {
 		LOG(INFO) << "Dynamic convolution mode";
-		CHECK(this->layer_param_.convolution_param().engine() == ConvolutionParameter_Engine_CUDNN) <<
+		CHECK(this->layer_param_.convolution_param().engine() == ConvolutionParameter_Engine_CAFFE) <<
 				"Dynamic convolution mode does not support CUDNN for now.";
 		CHECK_GE(bottom.size(), 2) << "Dynamic convolution mode requires at least two bottoms (one data, one filter).";
-		CHECK_EQ(bottom.size(), top.size()-1) << "Too many tops.";
+		CHECK_EQ(bottom.size(), top.size()+1) << "Number of tops not consistent with number of inputs.";
 		// input blobs starts from index 1
 		id = 1;
 	}
@@ -86,7 +86,7 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 
 	bias_term_ = this->layer_param_.convolution_param().bias_term();
 	if (dynamic_conv) {
-		CHECK_EQ(bottom[0]->count(), conv_out_channels_*conv_in_channels_*kernel_w_*kernel_h_)
+		CHECK_EQ(bottom[0]->count(1), conv_out_channels_*conv_in_channels_*kernel_w_*kernel_h_)
 				<< "Input size of bottom[0] incompatible with convolution kernel.";
 		CHECK_EQ(bias_term_, false) << "Dynamic convolution mode does not support bias term for now.";
 		this->blobs_.resize(0);
@@ -130,7 +130,7 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 	int id;
 	if (dynamic_conv) {
 		CHECK_GE(bottom.size(), 2) << "Dynamic convolution mode requires at least two bottoms (one data, one filter).";
-		CHECK_EQ(bottom.size(), top.size()-1) << "Too many tops.";
+		CHECK_EQ(bottom.size(), top.size()+1) << "Number of tops not consistent with number of inputs.";
 		// input blobs starts from index 1
 		id = 1;
 	}
@@ -174,7 +174,7 @@ void BaseConvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 	col_offset_ = kernel_dim_ * conv_out_spatial_dim_ / group_;
 	output_offset_ = conv_out_channels_ * conv_out_spatial_dim_ / group_;
 	if (dynamic_conv) {
-		CHECK_EQ(bottom[0]->count(), conv_out_channels_*kernel_dim_)
+		CHECK_EQ(bottom[0]->count(1), conv_out_channels_*kernel_dim_)
 				<< "Input size of bottom[0] incompatible with convolution kernel.";
 	}
 	// The im2col result buffer will only hold one image at a time to avoid

@@ -269,13 +269,14 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 146 (last added: binary_block_param)
+// LayerParameter next available layer-specific ID: 147 (last added: check_shape)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
   repeated string bottom = 3; // the name of each bottom blob
   repeated string top = 4; // the name of each top blob
-
+  optional bool check_shape = 146 [default = true];
+  
   // The train / test phase for computation.
   optional Phase phase = 10;
 
@@ -398,6 +399,7 @@ message TransformationParameter {
   optional bool is_flow = 14 [default = false];
   optional bool has_flow = 15 [default = false];
   optional int32 flow_point = 16 [default = 0];
+  optional int32 mean_jitter = 17 [default = 0];
 }
 
 // Message that stores parameters shared by loss layers
