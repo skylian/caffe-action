@@ -702,7 +702,7 @@ vector<int> DataTransformer<Dtype>::InferBlobShape(
 
 template <typename Dtype>
 void DataTransformer<Dtype>::InitRand() {
-	const bool needs_rand = param_.mirror() ||
+	const bool needs_rand = param_.mirror() || param_.mean_jitter() ||
 			(phase_ == TRAIN && param_.crop_size());
 	if (needs_rand) {
 		const unsigned int rng_seed =caffe_rng_rand();
