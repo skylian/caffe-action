@@ -45,9 +45,9 @@ void GlobalInit(int* pargc, char*** pargv) {
   MPI_Init_thread(pargc, pargv, MPI_THREAD_MULTIPLE, &provided_thread_support);
 
   CHECK_GE(provided_thread_support, MPI_THREAD_SERIALIZED)<<" Cannot activate MPI thread support";
-
-  Caffe::MPI_build_rank();
   
+  Caffe::MPI_build_rank();
+
   if (Caffe::MPI_all_rank() > 1) {
     Caffe::set_parallel_mode(Caffe::MPI);
     LOG(INFO)<<"Running parallel training with MPI support! " << Caffe::MPI_local_rank();

@@ -190,6 +190,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 	for (int c = 0; c < datum_channels; ++c) {
 		// image resize etc needed
 		int mean_jitter_range = param_.mean_jitter();
+        LOG(INFO) << "mean jitter " << mean_jitter_range;
 		int mean_jitter = Rand(2*mean_jitter_range+1) - mean_jitter_range;
 		if (need_imgproc){
 			cv::Mat M(datum_height, datum_width, has_uint8?CV_8UC1:CV_32FC1);
