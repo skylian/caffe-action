@@ -381,6 +381,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   vector<pair<int, int> > offset_pairs;
   vector<pair<int, int> > crop_size_pairs;
 
+  cv::Mat cv_cropped_img;
+
   CHECK_GT(img_channels, 0);
   CHECK_GE(img_height, crop_size);
   CHECK_GE(img_width, crop_size);
@@ -407,8 +409,6 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   int w_off = 0;
   int crop_height = 0;
   int crop_width = 0;
-  cv::Mat cv_cropped_img = cv_img;
-  cv::Mat multi_scale_bufferM = cv_img;
 
   if (crop_size) {
     CHECK_EQ(crop_size, height);
@@ -443,8 +443,9 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
     cv::Rect roi(w_off, h_off, crop_width, crop_height);
     // if resize needed, first put the resized image into a buffer, then copy back.
     if (do_multi_scale && ((crop_height != crop_size) || (crop_width != crop_size))){
-      multi_scale_bufferM = cv_img(roi);
-      cv::resize(multi_scale_bufferM, cv_cropped_img, cv::Size(crop_size, crop_size));
+      cv::Mat crop_bufferM(cv_img, roi);
+      cv::resize(crop_bufferM, cv_cropped_img, cv::Size(crop_size, crop_size));
+
     }else{
       cv_cropped_img = cv_img(roi);
     }
