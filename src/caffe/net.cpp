@@ -106,7 +106,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
       if (src_layer_id>=0) source_layer_need_sync.push_back(layers_[src_layer_id]->need_sync());
       if (source_layer_need_sync.size()>0){
         CHECK_EQ(source_layer_need_sync.back(), source_layer_need_sync[0])
-          <<" blob "<<layer_param.bottom(bottom_id)
+          <<" blob "<<layer_param.bottom(0)
           <<" and blob "<< layer_param.bottom(bottom_id)
           <<" are from layers with different paralle mode. This is not supported.";
       }
@@ -116,10 +116,15 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
 
     if (layers_[layer_id]->is_gathering()){
       layers_[layer_id]->set_need_sync(false);
-    }else {
-      if ((source_layer_need_sync.size() > 0)) {
-        layers_[layer_id]->set_need_sync(source_layer_need_sync[0]);
-        LOG(INFO) << "This layer is inheriting previous layer's sync mode: " << source_layer_need_sync[0];
+    } else {
+      LOG(INFO)<<layers_[layer_id]->is_scattering();
+      if(layers_[layer_id]->is_scattering()){
+        layers_[layer_id]->set_need_sync(true);
+      } else {
+        if ((source_layer_need_sync.size() > 0)) {
+          layers_[layer_id]->set_need_sync(source_layer_need_sync[0]);
+          LOG(INFO) << "This layer is inheriting previous layer's sync mode: " << source_layer_need_sync[0];
+        }
       }
     }
     #else

@@ -640,6 +640,42 @@ class SliceLayer : public Layer<Dtype> {
                               const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
   };
+
+/**
+ * @brief Scatter data in parallel mode
+ *
+ * TODO(dox): thorough documentation for Forward, Backward, and proto params.
+ */
+  template <typename Dtype>
+  class ScatterLayer : public Layer<Dtype> {
+  public:
+      explicit ScatterLayer(const LayerParameter& param)
+          : Layer<Dtype>(param) {}
+      virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+                              const vector<Blob<Dtype>*>& top);
+      virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+                           const vector<Blob<Dtype>*>& top);
+
+      virtual inline const char* type() const { return "Scatter"; }
+      virtual inline int MinBottomBlobs() const { return 1; }
+      virtual inline int MinTopBlobs() const { return 1; }
+      inline virtual bool is_scattering() {return true;}
+
+      virtual inline bool EqualNumBottomTopBlobs() const { return true; }
+
+  protected:
+      virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+                               const vector<Blob<Dtype>*>& top);
+      virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+                               const vector<Blob<Dtype>*>& top);
+      virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+                                const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+      virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+                                const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+  };
+
+
 /**
  * @brief Batch normalization the input blob along the channel axis while
  *        averaging over the spatial axes.
