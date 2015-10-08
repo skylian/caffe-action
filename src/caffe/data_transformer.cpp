@@ -47,18 +47,30 @@ DataTransformer<Dtype>::DataTransformer(const TransformationParameter& param,
 /** @build fixed crop offsets for random selection
  */
 void fillFixOffset(int datum_height, int datum_width, int crop_height, int crop_width,
+                   bool more_crop,
                    vector<pair<int , int> >& offsets){
-  int height_off = (datum_height - crop_height)/2;
-  int width_off = (datum_width - crop_width)/2;
+  int height_off = (datum_height - crop_height)/4;
+  int width_off = (datum_width - crop_width)/4;
 
   offsets.clear();
   offsets.push_back(pair<int, int>(0, 0)); //upper left
-  offsets.push_back(pair<int, int>(0, 2 * width_off)); //upper right
-  offsets.push_back(pair<int, int>(2 * height_off, 0)); //lower left
-  offsets.push_back(pair<int, int>(2 * height_off, 2 *width_off)); //lower right
-  offsets.push_back(pair<int, int>(height_off, width_off)); //center
+  offsets.push_back(pair<int, int>(0, 4 * width_off)); //upper right
+  offsets.push_back(pair<int, int>(4 * height_off, 0)); //lower left
+  offsets.push_back(pair<int, int>(4 * height_off, 4 *width_off)); //lower right
+  offsets.push_back(pair<int, int>(2 * height_off, 2 * width_off)); //center
 
+  //will be used when more_fix_crop is set to true
+  if (more_crop) {
+    offsets.push_back(pair<int, int>(0, 2 * width_off)); //top center
+    offsets.push_back(pair<int, int>(4 * height_off, 2 * width_off)); //bottom center
+    offsets.push_back(pair<int, int>(2 * height_off, 0)); //left center
+    offsets.push_back(pair<int, int>(2 * height_off, 4 * width_off)); //right center
 
+    offsets.push_back(pair<int, int>(1 * height_off, 1 * width_off)); //upper left quarter
+    offsets.push_back(pair<int, int>(1 * height_off, 3 * width_off)); //upper right quarter
+    offsets.push_back(pair<int, int>(3 * height_off, 1 * width_off)); //lower left quarter
+    offsets.push_back(pair<int, int>(3 * height_off, 3 * width_off)); //lower right quarter
+  }
 }
 
 float _scale_rates[] = {1.0, .875, .75, .66};
@@ -163,7 +175,8 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
         crop_width = crop_size;
       }
       if (param_.fix_crop()){
-        fillFixOffset(datum_height, datum_width, crop_height, crop_width, offset_pairs);
+        fillFixOffset(datum_height, datum_width, crop_height, crop_width,
+                      param_.more_fix_crop(), offset_pairs);
         int sel = Rand(offset_pairs.size());
         h_off = offset_pairs[sel].first;
         w_off = offset_pairs[sel].second;
@@ -426,7 +439,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         crop_width = crop_size;
       }
       if (param_.fix_crop()){
-        fillFixOffset(img_height, img_width, crop_height, crop_width, offset_pairs);
+        fillFixOffset(img_height, img_width, crop_height, crop_width,
+                      param_.more_fix_crop(), offset_pairs);
         int sel = Rand(offset_pairs.size());
         h_off = offset_pairs[sel].first;
         w_off = offset_pairs[sel].second;
