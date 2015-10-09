@@ -48,6 +48,8 @@ void GlobalInit(int* pargc, char*** pargv) {
 
   Caffe::MPI_build_rank();
   
+  Caffe::MPI_build_rank();
+
   if (Caffe::MPI_all_rank() > 1) {
     Caffe::set_parallel_mode(Caffe::MPI);
     LOG(INFO)<<"Running parallel training with MPI support! " << Caffe::MPI_local_rank();
