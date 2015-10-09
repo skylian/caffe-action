@@ -269,7 +269,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 147 (last added: check_shape)
+// LayerParameter next available layer-specific ID: 148 (last added: EmbedParameter)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -328,6 +328,7 @@ message LayerParameter {
   optional DropoutParameter dropout_param = 108;
   optional DummyDataParameter dummy_data_param = 109;
   optional EltwiseParameter eltwise_param = 110;
+  optional EmbedParameter embed_param = 147;
   optional ExpParameter exp_param = 111;
   optional FlattenParameter flatten_param = 135;
   optional HDF5DataParameter hdf5_data_param = 112;
@@ -338,8 +339,11 @@ message LayerParameter {
   optional InnerProductParameter inner_product_param = 117;
   optional LogParameter log_param = 134;
   optional LRNParameter lrn_param = 118;
+  optional LSTMParameter lstm_param = 142;
+  optional MatReadParameter mat_read_param = 143;
+  optional MatWriteParameter mat_write_param = 144;
   optional MemoryDataParameter memory_data_param = 119;
-  optional MVNParameter mvn_param = 120;
+  optional MVNParameter mvn_param = 120;  
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
   optional PReLUParameter prelu_param = 131;
@@ -353,11 +357,8 @@ message LayerParameter {
   optional SliceParameter slice_param = 126;
   optional TanHParameter tanh_param = 127;
   optional ThresholdParameter threshold_param = 128;
-  optional WindowDataParameter window_data_param = 129;
   optional VideoDataParameter video_data_param = 140;
-  optional LSTMParameter lstm_param = 142;
-  optional MatReadParameter mat_read_param = 143;
-  optional MatWriteParameter mat_write_param = 144;
+  optional WindowDataParameter window_data_param = 129;
 }
 
 // Message that stores parameters used to apply transformation
@@ -563,6 +564,20 @@ message EltwiseParameter {
   // Whether to use an asymptotically slower (for >2 inputs) but stabler method
   // of computing the gradient for the PROD operation. (No effect for SUM op.)
   optional bool stable_prod_grad = 3 [default = true];
+}
+
+// Message that stores parameters used by EmbedLayer
+message EmbedParameter {
+  optional uint32 num_output = 1; // The number of outputs for the layer
+  // The input is given as integers to be interpreted as one-hot
+  // vector indices with dimension num_input.  Hence num_input should be
+  // 1 greater than the maximum possible input value.
+  optional uint32 input_dim = 2;
+
+  optional bool bias_term = 3 [default = true]; // Whether to use a bias term
+  optional FillerParameter weight_filler = 4; // The filler for the weight
+  optional FillerParameter bias_filler = 5; // The filler for the bias
+
 }
 
 message ExpParameter {
