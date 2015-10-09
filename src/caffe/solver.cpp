@@ -321,7 +321,7 @@ void Solver<Dtype>::SyncData(){
                    || (param_layer_indices[param_ownner].second == param_ownner);
     // conduct data synchronization here
     if (is_self){
-      Dtype* data = net_params[param_id]->mutable_gpu_data();
+      Dtype* data = net_params[param_id]->mutable_cpu_data();
       caffe_ibcast(data, net_params[param_id]->count());
     }
   }
@@ -333,14 +333,14 @@ template <typename Dtype>
 void Solver<Dtype>::SyncOutput(shared_ptr<Net<Dtype> > net){
   const vector<Blob<Dtype>*>& result = net->output_blobs();
   for (int j = 0; j < result.size(); ++j) {
-    caffe_iallreduce<Dtype>(result[j]->mutable_gpu_data(),
+    caffe_iallreduce<Dtype>(result[j]->mutable_cpu_data(),
                             result[j]->count());
   }
   mpi_force_synchronize();
   for( int j = 0; j < result.size(); ++j){
-    caffe_gpu_scal(result[j]->count(),
-                   Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
-                   result[j]->mutable_gpu_data());
+    caffe_scal(result[j]->count(),
+               Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
+               result[j]->mutable_cpu_data());
   }
 
 }
