@@ -83,17 +83,17 @@ void GradientChecker<Dtype>::CheckGradientSingle(Layer<Dtype>* layer,
   // First, figure out what blobs we need to check against, and zero init
   // parameter blobs.
   vector<Blob<Dtype>*> blobs_to_check;
-  vector<bool> propagate_down(bottom.size(), check_bottom < 0);
+  vector<bool> propagate_down(bottom.size(), check_bottom == -1);
   for (int i = 0; i < layer->blobs().size(); ++i) {
     Blob<Dtype>* blob = layer->blobs()[i].get();
     caffe_set(blob->count(), static_cast<Dtype>(0), blob->mutable_cpu_diff());
     blobs_to_check.push_back(blob);
   }
-  if (check_bottom < 0) {
+  if (check_bottom == -1) {
     for (int i = 0; i < bottom.size(); ++i) {
       blobs_to_check.push_back(bottom[i]);
     }
-  } else {
+  } else if (check_bottom >= 0){
     CHECK_LT(check_bottom, bottom.size());
     blobs_to_check.push_back(bottom[check_bottom]);
     propagate_down[check_bottom] = true;
