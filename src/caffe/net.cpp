@@ -117,7 +117,6 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     if (layers_[layer_id]->is_gathering()){
       layers_[layer_id]->set_need_sync(false);
     } else {
-      LOG(INFO)<<layers_[layer_id]->is_scattering();
       if(layers_[layer_id]->is_scattering()){
         layers_[layer_id]->set_need_sync(true);
       } else {

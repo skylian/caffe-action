@@ -181,12 +181,21 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
                                      workspace_bwd_filter_sizes_[i]);
   }
   // get max over all operations
-  size_t max_workspace = std::max(total_workspace_fwd,
-                             total_workspace_bwd_data);
-  max_workspace = std::max(max_workspace, total_workspace_bwd_filter);
-  // ensure all groups have enough workspace
-  size_t total_max_workspace = max_workspace *
-                               (this->group_ * (this->phase_==TRAIN)?CUDNN_STREAMS_PER_GROUP:1);
+  size_t max_workspace = 0;
+  int n_buffer=0;
+  if (this->phase_ != TEST) {
+    max_workspace = std::max(total_workspace_fwd,
+                                    total_workspace_bwd_data);
+    max_workspace = std::max(max_workspace, total_workspace_bwd_filter);
+    // ensure all groups have enough workspace
+    n_buffer = this->group_ * CUDNN_STREAMS_PER_GROUP;
+  }else{
+    //TEST phase only need forward
+    max_workspace = total_workspace_fwd;
+    n_buffer = this->group_;
+  }
+
+  size_t total_max_workspace = max_workspace * n_buffer;
 
   // this is the total amount of storage needed over all groups + streams
   if (total_max_workspace > workspaceSizeInBytes) {
@@ -195,7 +204,7 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
     this->workspaceData.reset(new SyncedMemory(workspaceSizeInBytes));
 
     // set offset to each group
-    for (int g = 0; g < (this->group_ * CUDNN_STREAMS_PER_GROUP); g++) {
+    for (int g = 0; g < n_buffer; g++) {
       workspace_offset[g] = g * max_workspace;
     }
   }
