@@ -189,9 +189,9 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 	bool is_flow;
 	for (int c = 0; c < datum_channels; ++c) {
 		// image resize etc needed
-		int mean_jitter_range = param_.mean_jitter();
-        LOG(INFO) << "mean jitter " << mean_jitter_range;
-		int mean_jitter = Rand(2*mean_jitter_range+1) - mean_jitter_range;
+    	int mean_jitter_range = param_.mean_jitter();
+    	int mean_jitter = mean_jitter_range ? Rand(2*mean_jitter_range+1) - mean_jitter_range : 0;
+        
 		if (need_imgproc){
 			cv::Mat M(datum_height, datum_width, has_uint8?CV_8UC1:CV_32FC1);
 
@@ -706,10 +706,11 @@ void DataTransformer<Dtype>::InitRand() {
 	const bool needs_rand = param_.mirror() || param_.mean_jitter() ||
 			(phase_ == TRAIN && param_.crop_size());
 	if (needs_rand) {
+        LOG(INFO) << "need rand? " << needs_rand;
 		const unsigned int rng_seed =caffe_rng_rand();
 		rng_.reset(new Caffe::RNG(rng_seed));
 	} else {
-		rng_.reset();
+        rng_.reset();
 	}
 }
 
