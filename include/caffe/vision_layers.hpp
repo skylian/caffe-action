@@ -259,9 +259,15 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<Dtype> {
   size_t *workspace_fwd_sizes_;
   size_t *workspace_bwd_data_sizes_;
   size_t *workspace_bwd_filter_sizes_;
-  size_t workspaceSizeInBytes;  // size of underlying storage
-  shared_ptr<SyncedMemory> workspaceData;  // underlying storage
-  size_t *workspace_offset;  // offset into workspaceData
+
+  /** We prefer using a series of managed memory blocks to a single memory pool
+   *  The latter approach is prone to problem and has issues in memory alignment
+   **/
+  size_t workspaceSizeInBytes_fwd;  // size of underlying storage
+  vector<shared_ptr<SyncedMemory> > workspaceData_fwd;  // underlying storage
+
+  size_t workspaceSizeInBytes_bwd;  // size of underlying storage
+  vector<shared_ptr<SyncedMemory> > workspaceData_bwd;  // underlying storage
 };
 #endif
 

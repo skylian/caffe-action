@@ -13,7 +13,8 @@ namespace caffe {
 // Set to three for the benefit of the backward pass, which
 // can use separate streams for calculating the gradient w.r.t.
 // bias, filter weights, and bottom data for each group independently
-#define CUDNN_STREAMS_PER_GROUP 3
+#define CUDNN_FWD_STREAMS_PER_GROUP 1
+#define CUDNN_BWD_STREAMS_PER_GROUP 2
 
 /**
  * TODO(dox) explain cuDNN interface
@@ -23,8 +24,9 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   ConvolutionLayer<Dtype>::LayerSetUp(bottom, top);
   // Initialize CUDA streams and cuDNN.
-  stream_         = new cudaStream_t[this->group_ * CUDNN_STREAMS_PER_GROUP];
-  handle_         = new cudnnHandle_t[this->group_ * CUDNN_STREAMS_PER_GROUP];
+  int total_streams_per_group = CUDNN_FWD_STREAMS_PER_GROUP + CUDNN_BWD_STREAMS_PER_GROUP;
+  stream_         = new cudaStream_t[this->group_ * total_streams_per_group];
+  handle_         = new cudnnHandle_t[this->group_ * total_streams_per_group];
 
   // Initialize algorithm arrays
   fwd_algo_       = new cudnnConvolutionFwdAlgo_t[bottom.size()];
@@ -36,10 +38,13 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
   workspace_bwd_filter_sizes_ = new size_t[bottom.size()];
   workspace_bwd_data_sizes_ = new size_t[bottom.size()];
 
-  // workspace data
-  workspaceSizeInBytes = 0;
-  workspaceData = shared_ptr<SyncedMemory>(new SyncedMemory());
-  workspace_offset = new size_t[this->group_ * CUDNN_STREAMS_PER_GROUP];
+  // workspace data sizes start with zero
+  workspaceSizeInBytes_fwd = workspaceSizeInBytes_bwd = 0;
+  for (int i = 0; i < this->group_*CUDNN_FWD_STREAMS_PER_GROUP; ++i)
+    workspaceData_fwd.push_back(shared_ptr<SyncedMemory>(new SyncedMemory()));
+  for (int i = 0; i < this->group_*CUDNN_BWD_STREAMS_PER_GROUP; ++i)
+    workspaceData_bwd.push_back(shared_ptr<SyncedMemory>(new SyncedMemory()));
+
 
   for (size_t i = 0; i < bottom.size(); ++i) {
     // initialize all to default algorithms
@@ -52,11 +57,10 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
     workspace_bwd_filter_sizes_[i] = 0;
   }
 
-  for (int g = 0; g < this->group_ * CUDNN_STREAMS_PER_GROUP; g++) {
+  for (int g = 0; g < this->group_ * total_streams_per_group; g++) {
     CUDA_CHECK(cudaStreamCreate(&stream_[g]));
     CUDNN_CHECK(cudnnCreate(&handle_[g]));
     CUDNN_CHECK(cudnnSetStream(handle_[g], stream_[g]));
-    workspace_offset[g] = 0;
   }
 
   // Set the indexing parameters.
@@ -180,34 +184,28 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
     total_workspace_bwd_filter = std::max(total_workspace_bwd_filter,
                                      workspace_bwd_filter_sizes_[i]);
   }
-  // get max over all operations
-  size_t max_workspace = 0;
-  int n_buffer=0;
-  if (this->phase_ != TEST) {
-    max_workspace = std::max(total_workspace_fwd,
-                                    total_workspace_bwd_data);
-    max_workspace = std::max(max_workspace, total_workspace_bwd_filter);
-    // ensure all groups have enough workspace
-    n_buffer = this->group_ * CUDNN_STREAMS_PER_GROUP;
-  }else{
-    //TEST phase only need forward
-    max_workspace = total_workspace_fwd;
-    n_buffer = this->group_;
-  }
+  // get max workspace for both forward and backward operations
+  size_t max_workspace_fwd = 0;
+  size_t max_workspace_bwd = 0;
+  max_workspace_fwd = total_workspace_fwd;
+  max_workspace_bwd = std::max(total_workspace_bwd_data, total_workspace_bwd_filter);
 
-  size_t total_max_workspace = max_workspace * n_buffer;
-
-  // this is the total amount of storage needed over all groups + streams
-  if (total_max_workspace > workspaceSizeInBytes) {
-    LOG(INFO) << "Reallocating workspace storage: " << total_max_workspace;
-    workspaceSizeInBytes = total_max_workspace;
-    this->workspaceData.reset(new SyncedMemory(workspaceSizeInBytes));
-
-    // set offset to each group
-    for (int g = 0; g < n_buffer; g++) {
-      workspace_offset[g] = g * max_workspace;
+  // adjust forward workspace if necessary
+  if (max_workspace_fwd > workspaceSizeInBytes_fwd){
+    workspaceSizeInBytes_fwd = max_workspace_fwd;
+    for (int i = 0; i < this->group_ * CUDNN_FWD_STREAMS_PER_GROUP; ++i){
+      workspaceData_fwd[i].reset(new SyncedMemory(workspaceSizeInBytes_fwd));
     }
   }
+
+  // adjust backward workspace if necessary
+  if (max_workspace_bwd > workspaceSizeInBytes_bwd){
+    workspaceSizeInBytes_bwd = max_workspace_bwd;
+    for (int i = 0; i < this->group_ * CUDNN_BWD_STREAMS_PER_GROUP; ++i){
+      workspaceData_bwd[i].reset(new SyncedMemory(workspaceSizeInBytes_bwd));
+    }
+  }
+
 
   // Tensor descriptor for bias.
   if (this->bias_term_) {
@@ -231,12 +229,16 @@ CuDNNConvolutionLayer<Dtype>::~CuDNNConvolutionLayer() {
   }
   cudnnDestroyFilterDescriptor(filter_desc_);
 
-  for (int g = 0; g < this->group_ * CUDNN_STREAMS_PER_GROUP; g++) {
+  int total_stream_per_group = CUDNN_FWD_STREAMS_PER_GROUP + CUDNN_BWD_STREAMS_PER_GROUP;
+  for (int g = 0; g < this->group_ * total_stream_per_group; g++) {
     cudaStreamDestroy(stream_[g]);
     cudnnDestroy(handle_[g]);
   }
 
-  workspaceData.reset();
+  // release all allocated workspace memory blocks.
+  workspaceData_bwd.empty();
+  workspaceData_fwd.empty();
+
   delete [] stream_;
   delete [] handle_;
   delete [] fwd_algo_;
