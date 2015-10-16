@@ -3,6 +3,8 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
+- Oct 13, 2015
+  * Improved cuDNN wrapper to use less GPU memory. You are suggested to upgrade to the newest version.
 - Sep. 30, 2015
   * Support for [cuDNN v3](https://developer.nvidia.com/cudnn). 
 - Sep. 7, 2015
