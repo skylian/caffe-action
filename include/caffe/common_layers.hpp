@@ -709,6 +709,7 @@ class SliceLayer : public Layer<Dtype> {
     void AverageAllExceptChannel(const Dtype* input, Dtype* output);
     void BroadcastChannel(const Dtype* input, Dtype* output);
 
+    bool frozen_;
     bool moving_average_;
     Dtype bn_momentum_;
     Dtype bn_eps_;

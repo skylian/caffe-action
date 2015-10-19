@@ -440,6 +440,10 @@ message BNParameter {
   optional bool moving_average = 3 [default = true];
   optional float momentum = 4 [default = 0.9];
   optional float eps = 5 [default = 1e-7];
+  // If true, will use the moving average mean and std for training and test.
+  // Will override the lr_param and freeze all the parameters.
+  // Make sure to initialize the layer properly with pretrained parameters.
+  optional bool frozen = 6 [default = false];
 }
 
 message ConcatParameter {
