@@ -20,6 +20,9 @@ class PythonLayer : public Layer<Dtype> {
       const vector<Blob<Dtype>*>& top) {
       self_.attr("param_str") = bp::str(
               this->layer_param_.python_param().param_str());
+      self_.attr("phase") = bp::str(
+          (this->phase_ == TRAIN)?"train":"test"
+      );
     try {
       self_.attr("setup")(bottom, top);
     } catch (bp::error_already_set) {
