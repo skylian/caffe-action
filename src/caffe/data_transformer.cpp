@@ -459,7 +459,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
     if (do_multi_scale && ((crop_height != crop_size) || (crop_width != crop_size))){
       cv::Mat crop_bufferM(cv_img, roi);
       cv::resize(crop_bufferM, cv_cropped_img, cv::Size(crop_size, crop_size));
-
+      crop_bufferM.release();
     }else{
       cv_cropped_img = cv_img(roi);
     }
@@ -513,6 +513,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
       }
     }
   }
+  cv_cropped_img.release();
+  cv_img.release();
 }
 
 template<typename Dtype>
