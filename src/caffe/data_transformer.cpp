@@ -218,6 +218,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       //resize the cropped patch to network input size
       cv::Mat cropM(M, cv::Rect(w_off, h_off, crop_width, crop_height));
       cv::resize(cropM, multi_scale_bufferM, cv::Size(crop_size, crop_size));
+      cropM.release();
     }
     for (int h = 0; h < height; ++h) {
       for (int w = 0; w < width; ++w) {
@@ -272,6 +273,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
       }
     }
   }
+  multi_scale_bufferM.release();
 }
 
 template<typename Dtype>
@@ -400,7 +402,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   CHECK_GE(img_height, crop_size);
   CHECK_GE(img_width, crop_size);
 
-  Dtype* mean = NULL;
+  Dtype *mean = NULL;
   if (has_mean_file) {
     CHECK_EQ(img_channels, data_mean_.channels());
     CHECK_EQ(img_height, data_mean_.height());
@@ -409,7 +411,8 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   }
   if (has_mean_values) {
     CHECK(mean_values_.size() == 1 || mean_values_.size() == img_channels) <<
-     "Specify either 1 mean_value or as many as channels: " << img_channels;
+                                                                           "Specify either 1 mean_value or as many as channels: " <<
+                                                                           img_channels;
     if (img_channels > 1 && mean_values_.size() == 1) {
       // Replicate the mean_value for simplicity
       for (int c = 1; c < img_channels; ++c) {
@@ -428,23 +431,23 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
     CHECK_EQ(crop_size, width);
     // We only do random crop when we do training.
     if (phase_ == TRAIN) {
-      if (do_multi_scale){
+      if (do_multi_scale) {
         fillCropSize(img_height, img_width, crop_size, crop_size, crop_size_pairs,
                      max_distort_, custom_scale_ratios_);
         int sel = Rand(crop_size_pairs.size());
         crop_height = crop_size_pairs[sel].first;
         crop_width = crop_size_pairs[sel].second;
-      }else{
+      } else {
         crop_height = crop_size;
         crop_width = crop_size;
       }
-      if (param_.fix_crop()){
+      if (param_.fix_crop()) {
         fillFixOffset(img_height, img_width, crop_height, crop_width,
                       param_.more_fix_crop(), offset_pairs);
         int sel = Rand(offset_pairs.size());
         h_off = offset_pairs[sel].first;
         w_off = offset_pairs[sel].second;
-      }else {
+      } else {
         h_off = Rand(img_height - crop_height + 1);
         w_off = Rand(img_width - crop_width + 1);
       }
@@ -456,11 +459,11 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
     }
     cv::Rect roi(w_off, h_off, crop_width, crop_height);
     // if resize needed, first put the resized image into a buffer, then copy back.
-    if (do_multi_scale && ((crop_height != crop_size) || (crop_width != crop_size))){
+    if (do_multi_scale && ((crop_height != crop_size) || (crop_width != crop_size))) {
       cv::Mat crop_bufferM(cv_img, roi);
       cv::resize(crop_bufferM, cv_cropped_img, cv::Size(crop_size, crop_size));
       crop_bufferM.release();
-    }else{
+    } else {
       cv_cropped_img = cv_img(roi);
     }
   } else {
@@ -470,10 +473,10 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
 
   CHECK(cv_cropped_img.data);
 
-  Dtype* transformed_data = transformed_blob->mutable_cpu_data();
+  Dtype *transformed_data = transformed_blob->mutable_cpu_data();
   int top_index;
   for (int h = 0; h < height; ++h) {
-    const uchar* ptr = cv_cropped_img.ptr<uchar>(h);
+    const uchar *ptr = cv_cropped_img.ptr<uchar>(h);
     int img_index = 0;
     for (int w = 0; w < width; ++w) {
       for (int c = 0; c < img_channels; ++c) {
@@ -485,36 +488,35 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
         // int top_index = (c * height + h) * width + w;
         Dtype pixel = static_cast<Dtype>(ptr[img_index++]);
         if (has_mean_file) {
-        //we will use a fixed position of mean map for multi-scale.
-        int mean_index = (do_multi_scale)?
-                         (c * img_height  + h) * img_width +  w
-                         :(c * img_height + h_off + h) * img_width +  w_off + w;
+          //we will use a fixed position of mean map for multi-scale.
+          int mean_index = (do_multi_scale) ?
+                           (c * img_height + h) * img_width + w
+                                            : (c * img_height + h_off + h) * img_width + w_off + w;
           if (param_.is_flow() && do_mirror)
-        	  transformed_data[top_index] =
-	            (255 - pixel - mean[mean_index]) * scale;
+            transformed_data[top_index] =
+                (255 - pixel - mean[mean_index]) * scale;
           else
-        	  transformed_data[top_index] =
-            (pixel - mean[mean_index]) * scale;
+            transformed_data[top_index] =
+                (pixel - mean[mean_index]) * scale;
         } else {
           if (has_mean_values) {
-        	  if (param_.is_flow() && do_mirror && c%2 == 0)
-        		  transformed_data[top_index] =
-        				  (255 - pixel - mean_values_[c]) * scale;
-        	  else
-        		  transformed_data[top_index] =
-        		                (pixel - mean_values_[c]) * scale;
+            if (param_.is_flow() && do_mirror && c % 2 == 0)
+              transformed_data[top_index] =
+                  (255 - pixel - mean_values_[c]) * scale;
+            else
+              transformed_data[top_index] =
+                  (pixel - mean_values_[c]) * scale;
           } else {
-        	  if (param_.is_flow() && do_mirror && c%2 ==0)
-        		  transformed_data[top_index] = (255 - pixel) * scale;
-        	  else
-        		  transformed_data[top_index] = pixel * scale;
+            if (param_.is_flow() && do_mirror && c % 2 == 0)
+              transformed_data[top_index] = (255 - pixel) * scale;
+            else
+              transformed_data[top_index] = pixel * scale;
           }
         }
       }
     }
   }
   cv_cropped_img.release();
-  cv_img.release();
 }
 
 template<typename Dtype>
