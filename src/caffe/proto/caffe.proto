@@ -1037,6 +1037,7 @@ message VideoDataParameter{
   repeated string root_folder = 14;
   optional uint32 interval = 15 [default = 0];
   optional uint32 num_labels = 16 [default = 1];
+  optional string roi_folder = 17 [default = ''];
 }
 
 // DEPRECATED: use LayerParameter.

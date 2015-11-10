@@ -13,9 +13,9 @@
 
 #ifdef USE_MPI
 #include "mpi.h"
+#endif
 #include <boost/filesystem.hpp>
 using namespace boost::filesystem;
-#endif
 
 namespace caffe{
 template <typename Dtype>
@@ -38,7 +38,8 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	const int num_segments = video_data_param.num_segments();
 	const string& source = video_data_param.source();
-	root_folders_.clear();
+	
+    root_folders_.clear();
 	std::copy(video_data_param.root_folder().begin(), video_data_param.root_folder().end(),
 			std::back_inserter(root_folders_));
 	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
@@ -48,9 +49,11 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	const int interval = video_data_param.interval();
 	if (video_data_param.modality() != VideoDataParameter_Modality_RGB)
 		CHECK_GT(interval, 0) << "Flow data must have interval > 0.";
-	num_labels_ = video_data_param.num_labels();
+	
+    num_labels_ = video_data_param.num_labels();
 	LOG(INFO) << "number of labels: " << num_labels_	;
-	LOG(INFO) << "Opening file: " << source;
+	
+    LOG(INFO) << "Opening file: " << source;
 	std:: ifstream infile(source.c_str());
 	string filename;
 	vector<int> label(num_labels_);
@@ -101,6 +104,16 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	top[1]->Reshape(batch_size, num_labels_, 1, 1);
 	this->prefetch_label_.Reshape(batch_size, num_labels_, 1, 1);
 
+    roi_folder_ = this->layer_param_.video_data_param().roi_folder();
+    if (!roi_folder_.empty()) {
+        CHECK_EQ(top.size(), 3) << "There should be 3 tops when ROIs are given.";
+        CHECK_EQ(batch_size, 1) << "Currently video data layer only supports batch_size == 1 when ROIs are given.";
+        CHECK_EQ(num_segments, 1) << "Currently video data layer only supports num_segments == 1 when ROIs are given.";
+        // We put actual reshape of top[2] in data fetch stage, as the number of ROIs is unknown yet
+        top[2]->Reshape(batch_size, 1000, 5, 1);
+        this->prefetch_roi_.Reshape(batch_size, 1000, 5, 1);
+    }
+
 	vector<int> top_shape = this->data_transformer_->InferBlobShape(datum);
 	this->transformed_data_.Reshape(top_shape);
 }
@@ -120,6 +133,7 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 	CHECK(this->prefetch_data_.count());
 	Dtype* top_data = this->prefetch_data_.mutable_cpu_data();
 	Dtype* top_label = this->prefetch_label_.mutable_cpu_data();
+
 	const VideoDataParameter& video_data_param = this->layer_param_.video_data_param();
 	const int batch_size = video_data_param.batch_size();
 	const int new_height = video_data_param.new_height();
@@ -170,7 +184,29 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 			top_label[item_id*num_labels_+l] = (lines_[lines_id_].second)[l];
 		}
 
-		//next iteration
+        if (!roi_folder_.empty()) {
+        	boost::filesystem::path roi_path(lines_[lines_id_].first);
+            string roi_file = roi_folder_ + roi_path.stem().string() + ".mat";
+            Blob<Dtype> roi_blob;
+            CHECK(ReadROI(roi_file, &roi_blob, offsets[0])) << "Error reading ROI file " << roi_file
+            												<< "at index " << offsets[0]
+            												<< ". Please check the log.";
+            vector<int> shape(3);
+            shape[0] = batch_size;
+            shape[1] = roi_blob.shape(0);
+            shape[2] = roi_blob.shape(1)+1;
+            LOG(INFO) << "read ROI data from " << roi_file << " at index " << offsets[0] << " " << shape[1] << " " << shape[2];
+            this->prefetch_roi_.Reshape(shape);
+            Dtype *roi_top = this->prefetch_roi_.mutable_cpu_data() + this->prefetch_roi_.offset(item_id);
+            const Dtype *roi_data = roi_blob.cpu_data();
+            for (int n=0, count=0, c=0; n < roi_blob.shape(0); ++n) {
+            	roi_top[c++] = item_id;
+            	for (int d = 0; d < roi_blob.shape(1); ++d) {
+            		roi_top[c++] = roi_data[count++];
+            	}
+            }
+        }
+     	//next iteration
 		lines_id_++;
 		if (lines_id_ >= lines_size) {
 			DLOG(INFO) << "Restarting data prefetching from start.";
