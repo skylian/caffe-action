@@ -158,10 +158,20 @@ shared_ptr<Layer<Dtype> > GetTanHLayer(const LayerParameter& param) {
 REGISTER_LAYER_CREATOR(TanH, GetTanHLayer);
 
 #ifdef WITH_PYTHON_LAYER
+PyThreadState* tstate = NULL;
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetPythonLayer(const LayerParameter& param) {
-  Py_Initialize();
+
+  if (Caffe::py_tstate() == NULL){
+    Py_Initialize();
+    PyEval_InitThreads();
+    PyThreadState* tstate = PyEval_SaveThread();
+    Caffe::set_py_tstate(tstate);
+  }
+  PyGILState_STATE state;
+  state = PyGILState_Ensure();
   try {
+
     bp::object module = bp::import(param.python_param().module().c_str());
     bp::object layer = module.attr(param.python_param().layer().c_str())(param);
     return bp::extract<shared_ptr<PythonLayer<Dtype> > >(layer)();
@@ -169,6 +179,7 @@ shared_ptr<Layer<Dtype> > GetPythonLayer(const LayerParameter& param) {
     PyErr_Print();
     throw;
   }
+  PyGILState_Release(state);
 }
 
 REGISTER_LAYER_CREATOR(Python, GetPythonLayer);
