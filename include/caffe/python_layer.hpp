@@ -17,6 +17,9 @@ class PythonLayer : public Layer<Dtype> {
   PythonLayer(PyObject* self, const LayerParameter& param)
       : Layer<Dtype>(param), self_(bp::handle<>(bp::borrowed(self))) { }
 
+  virtual ~PythonLayer(){
+
+  }
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
     //ensure the GIL
@@ -36,23 +39,11 @@ class PythonLayer : public Layer<Dtype> {
       throw;
     }
     PyGILState_Release(state);
-
-    if (prefetch_){
-      thread_.reset(
-          new boost::thread(&PythonLayer::PrefetchThread, this));
-    }
+    MaybeStartPrefetchThread();
   }
 
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-
-    if ((thread_.get() != NULL) && thread_->joinable()){
-      try {
-        thread_->join();
-      } catch (...) {
-        throw;
-      }
-    }
     PyGILState_STATE state;
     state = PyGILState_Ensure();
     try {
@@ -69,6 +60,7 @@ class PythonLayer : public Layer<Dtype> {
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
+    WaitForPrefetchThread();
     PyGILState_STATE state;
     state = PyGILState_Ensure();
     try {
@@ -78,6 +70,7 @@ class PythonLayer : public Layer<Dtype> {
       throw;
     }
     PyGILState_Release(state);
+    MaybeStartPrefetchThread();
   }
   virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
@@ -102,6 +95,24 @@ class PythonLayer : public Layer<Dtype> {
       throw;
     }
     PyGILState_Release(state);
+  }
+
+  void MaybeStartPrefetchThread(){
+    if (prefetch_){
+      thread_.reset(
+        new boost::thread(&PythonLayer::PrefetchThread, this));
+    }
+
+  }
+
+  void WaitForPrefetchThread(){
+    if ((thread_.get() != NULL) && thread_->joinable()){
+      try {
+        thread_->join();
+      } catch (...) {
+        throw;
+      }
+    }
   }
 
  private:
