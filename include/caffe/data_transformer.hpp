@@ -35,7 +35,7 @@ class DataTransformer {
    *    This is destination blob. It can be part of top blob's data if
    *    set_cpu_data() is used. See data_layer.cpp for an example.
    */
-  void Transform(const Datum& datum, Blob<Dtype>* transformed_blob);
+  void Transform(const Datum& datum, Blob<Dtype>* transformed_blob, Blob<Dtype>* roi = NULL);
 
   /**
    * @brief Applies the transformation defined in the data layer's
@@ -134,7 +134,7 @@ class DataTransformer {
    */
   virtual int Rand(int n);
 
-  void Transform(const Datum& datum, Dtype* transformed_data);
+  void Transform(const Datum& datum, Dtype* transformed_data, Blob<Dtype> *roi = NULL);
   // Tranformation parameters
   TransformationParameter param_;
 

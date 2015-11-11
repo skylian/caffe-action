@@ -92,7 +92,7 @@ void fillCropSize(int input_height, int input_width,
 
 
 template<typename Dtype>
-void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_data) {
+void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_data, Blob<Dtype> *roi) {
 
 
 	const string& data = datum.data();
@@ -181,6 +181,35 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 		}
 	}
 
+	if (roi) {
+		int cur = 0;
+		Dtype x1, y1, x2, y2;
+		float ratio_w = float(crop_size) / crop_width, ratio_h = float(crop_size) / crop_height;
+		Dtype *roi_data = roi->mutable_cpu_data();
+		for (int n = 0, p = 0; n < roi->shape(0); ++n, p+=4) {
+			x1 = std::max(0.0f, float(roi_data[p])-w_off) * ratio_w;
+			y1 = std::max(0.0f, float(roi_data[p+1])-h_off) * ratio_h;
+			x2 = std::max(0.0f, float(roi_data[p+2])-w_off) * ratio_w;
+			y2 = std::max(0.0f, float(roi_data[p+3])-h_off) * ratio_h;
+			if (do_mirror) {
+				x1 = std::max(0.0f, float(crop_size - 1 - x1));
+				x2 = std::max(0.0f, float(crop_size - 1 - x2));
+				std::swap(x1, x2);
+			}
+			if (std::max(y2-y1, x2-x1) >= 100 && std::min(y2-y1, x2-x1) >= 20) {
+				roi_data[cur++] = x1;
+				roi_data[cur++] = y1;
+				roi_data[cur++] = x2;
+				roi_data[cur++] = y2;
+			}
+		}
+		vector<int> shape(2);
+		shape[0] = cur / 4;
+		shape[1] = 4;
+		Blob<Dtype> new_roi(shape);
+		caffe_copy(new_roi.count(), roi_data, new_roi.mutable_cpu_data());
+		roi->CopyFrom(new_roi, false, true);
+	}
 
 	need_imgproc = do_multi_scale && crop_size && ((crop_height != crop_size) || (crop_width != crop_size));
 
@@ -270,7 +299,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 
 template<typename Dtype>
 void DataTransformer<Dtype>::Transform(const Datum& datum,
-		Blob<Dtype>* transformed_blob) {
+		Blob<Dtype>* transformed_blob,  Blob<Dtype> *roi) {
 	// If datum is encoded, decoded and transform the cv::image.
 	if (datum.encoded()) {
 		CHECK(!(param_.force_color() && param_.force_gray()))
@@ -315,7 +344,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum,
 	}
 
 	Dtype* transformed_data = transformed_blob->mutable_cpu_data();
-	Transform(datum, transformed_data);
+	Transform(datum, transformed_data, roi);
 }
 
 template<typename Dtype>

@@ -105,13 +105,17 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	this->prefetch_label_.Reshape(batch_size, num_labels_, 1, 1);
 
     roi_folder_ = this->layer_param_.video_data_param().roi_folder();
-    if (!roi_folder_.empty()) {
+    this->has_roi_data_ = !roi_folder_.empty();
+    if (this->has_roi_data_) {
         CHECK_EQ(top.size(), 3) << "There should be 3 tops when ROIs are given.";
         CHECK_EQ(batch_size, 1) << "Currently video data layer only supports batch_size == 1 when ROIs are given.";
         CHECK_EQ(num_segments, 1) << "Currently video data layer only supports num_segments == 1 when ROIs are given.";
         // We put actual reshape of top[2] in data fetch stage, as the number of ROIs is unknown yet
-        top[2]->Reshape(batch_size, 1000, 5, 1);
+        top[2]->Reshape(batch_size, 1, 5, 1);
         this->prefetch_roi_.Reshape(batch_size, 1000, 5, 1);
+    }
+    else {
+    	CHECK_EQ(top.size(), 2) << "There should be 2 tops.";
     }
 
 	vector<int> top_shape = this->data_transformer_->InferBlobShape(datum);
@@ -177,25 +181,27 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 			if(!ReadSegmentRGBFlowToDatum(root_folders_, lines_[lines_id_].first, (lines_[lines_id_].second)[0], offsets, new_height, new_width, new_length_, &datum, true))
 				continue;
 		}
-		int offset1 = this->prefetch_data_.offset(item_id);
-    	this->transformed_data_.set_cpu_data(top_data + offset1);
-		this->data_transformer_->Transform(datum, &(this->transformed_data_));
+
 		for (int l = 0; l < num_labels_; ++l) {
 			top_label[item_id*num_labels_+l] = (lines_[lines_id_].second)[l];
 		}
 
-        if (!roi_folder_.empty()) {
+		int offset1 = this->prefetch_data_.offset(item_id);
+		this->transformed_data_.set_cpu_data(top_data + offset1);
+        if (this->has_roi_data_) {
         	boost::filesystem::path roi_path(lines_[lines_id_].first);
             string roi_file = roi_folder_ + roi_path.stem().string() + ".mat";
             Blob<Dtype> roi_blob;
             CHECK(ReadROI(roi_file, &roi_blob, offsets[0])) << "Error reading ROI file " << roi_file
             												<< "at index " << offsets[0]
             												<< ". Please check the log.";
+
+            this->data_transformer_->Transform(datum, &(this->transformed_data_), &roi_blob);
             vector<int> shape(3);
             shape[0] = batch_size;
             shape[1] = roi_blob.shape(0);
             shape[2] = roi_blob.shape(1)+1;
-            LOG(INFO) << "read ROI data from " << roi_file << " at index " << offsets[0] << " " << shape[1] << " " << shape[2];
+
             this->prefetch_roi_.Reshape(shape);
             Dtype *roi_top = this->prefetch_roi_.mutable_cpu_data() + this->prefetch_roi_.offset(item_id);
             const Dtype *roi_data = roi_blob.cpu_data();
@@ -206,6 +212,10 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
             	}
             }
         }
+        else {
+        	this->data_transformer_->Transform(datum, &(this->transformed_data_), NULL);
+        }
+
      	//next iteration
 		lines_id_++;
 		if (lines_id_ >= lines_size) {

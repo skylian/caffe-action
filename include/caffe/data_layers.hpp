@@ -135,6 +135,7 @@ public:
 	}
 
 protected:
+	bool has_roi_data_;
 	Blob<Dtype> prefetch_data_;
 	Blob<Dtype> prefetch_label_;
 	Blob<Dtype> prefetch_roi_;

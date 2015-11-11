@@ -101,7 +101,9 @@ void BasePrefetchingROILayer<Dtype>::LayerSetUp(
   if (this->output_labels_) {
     this->prefetch_label_.mutable_cpu_data();
   }
-  this->prefetch_roi_.mutable_cpu_data();
+  if (this->has_roi_data_) {
+	  this->prefetch_roi_.mutable_cpu_data();
+  }
 #ifdef USE_MPI
   //advance (my_rank) mini-batches to be ready for first run
   BaseDataLayer<Dtype>::OffsetCursor(top[0]->num() * Caffe::MPI_my_rank());
