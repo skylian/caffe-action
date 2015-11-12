@@ -432,24 +432,33 @@ private:
 		matvar = Mat_VarReadNextInfo(matfp);
 		if (!matvar) {
 			LOG(ERROR) << "Error reading MAT file " << roi_file;
+			Mat_Close(matfp);
 			return false;
 		}
 		if (matvar->class_type != MAT_C_CELL) {
 			LOG(ERROR) << "Variable in roi file should be a cell: " << roi_file;
+			Mat_VarFree(matvar);
+			Mat_Close(matfp);
 			return false;
 		}
 
 		if (id >= matvar->dims[0]) {
 			LOG(ERROR) << "index out of range: " << roi_file;
+			Mat_VarFree(matvar);
+			Mat_Close(matfp);
 			return false;
 		}
 		cell = Mat_VarGetCell(matvar, id); // only supports num_segments == 1 currently
 		if (cell->rank != 2) {
 			LOG(ERROR) << "ROI data should be a 2-D matrix: " << roi_file;
+			Mat_VarFree(matvar);
+			Mat_Close(matfp);
 			return false;
 		}
 		if (cell->class_type != MAT_C_SINGLE) {
 			LOG(ERROR) << "ROI data should be of type single: " << roi_file;
+			Mat_VarFree(matvar);
+			Mat_Close(matfp);
 			return false;
 		}
 		vector<int> shape(2);
@@ -459,8 +468,12 @@ private:
 		int ret = Mat_VarReadDataLinear(matfp, cell, roi->mutable_cpu_data(), 0, 1, cell->dims[0]*cell->dims[1]);
 		if (ret) {
 			LOG(ERROR) << "ROI reading error: " << ret;
+			Mat_VarFree(matvar);
+			Mat_Close(matfp);
 			return false;
 		}
+		Mat_VarFree(matvar);
+		Mat_Close(matfp);
 		return true;
 	}
 
