@@ -111,7 +111,7 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
         CHECK_EQ(batch_size, 1) << "Currently video data layer only supports batch_size == 1 when ROIs are given.";
         CHECK_EQ(num_segments, 1) << "Currently video data layer only supports num_segments == 1 when ROIs are given.";
         // We put actual reshape of top[2] in data fetch stage, as the number of ROIs is unknown yet
-        top[2]->Reshape(batch_size, 1, 5, 1);
+        top[2]->Reshape(batch_size, 100, 5, 1);
         this->prefetch_roi_.Reshape(batch_size, 1000, 5, 1);
     }
     else {

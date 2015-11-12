@@ -41,6 +41,8 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   if (global_pooling_) {
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
+    global_pooling_height_ = true;
+    global_pooling_width_ = true;
   } else {
     if (pool_param.has_kernel_size()) {
       kernel_h_ = kernel_w_ = pool_param.kernel_size();
@@ -48,9 +50,11 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       kernel_h_ = pool_param.kernel_h();
       kernel_w_ = pool_param.kernel_w();
     }
+    global_pooling_height_ = kernel_h_ == 0;
+    global_pooling_width_ = kernel_w_ == 0;
   }
-  CHECK_GT(kernel_h_, 0) << "Filter dimensions cannot be zero.";
-  CHECK_GT(kernel_w_, 0) << "Filter dimensions cannot be zero.";
+//  CHECK_GT(kernel_h_, 0) << "Filter dimensions cannot be zero.";
+//  CHECK_GT(kernel_w_, 0) << "Filter dimensions cannot be zero.";
   if (!pool_param.has_pad_h()) {
     pad_h_ = pad_w_ = pool_param.pad();
   } else {
@@ -66,6 +70,16 @@ void PoolingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   if (global_pooling_) {
     CHECK(pad_h_ == 0 && pad_w_ == 0 && stride_h_ == 1 && stride_w_ == 1)
       << "With Global_pooling: true; only pad = 0 and stride = 1";
+  }
+  if (kernel_h_ == 0) {
+	  kernel_h_ = bottom[0]->height();
+	  CHECK(pad_h_ == 0 && stride_h_ == 1)
+	  << "With global pooling along height: true; only pad_h = 0 and stride_h = 1";
+  }
+  if (kernel_w_ == 0) {
+  	  kernel_w_ = bottom[0]->width();
+  	  CHECK(pad_w_ == 0 && stride_w_ == 1)
+  	  << "With global pooling along width: true; only pad_w = 0 and stride_w = 1";
   }
   if (pad_h_ != 0 || pad_w_ != 0) {
     CHECK(this->layer_param_.pooling_param().pool()
@@ -89,6 +103,12 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   if (global_pooling_) {
     kernel_h_ = bottom[0]->height();
     kernel_w_ = bottom[0]->width();
+  }
+  if (global_pooling_height_) {
+  	  kernel_h_ = bottom[0]->height();
+  }
+  if (global_pooling_width_) {
+  	  kernel_w_ = bottom[0]->width();
   }
   pooled_height_ = static_cast<int>(ceil(static_cast<float>(
       height_ + 2 * pad_h_ - kernel_h_) / stride_h_)) + 1;

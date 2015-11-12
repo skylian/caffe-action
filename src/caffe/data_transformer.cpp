@@ -184,7 +184,7 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 	if (roi) {
 		int cur = 0;
 		Dtype x1, y1, x2, y2;
-		float ratio_w = float(crop_size) / crop_width, ratio_h = float(crop_size) / crop_height;
+		float ratio_w = crop_width ? float(crop_size)/crop_width : 1, ratio_h = crop_height ? float(crop_size)/crop_height : 1;
 		Dtype *roi_data = roi->mutable_cpu_data();
 		for (int n = 0, p = 0; n < roi->shape(0); ++n, p+=4) {
 			x1 = std::max(0.0f, float(roi_data[p])-w_off) * ratio_w;
@@ -192,8 +192,8 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 			x2 = std::max(0.0f, float(roi_data[p+2])-w_off) * ratio_w;
 			y2 = std::max(0.0f, float(roi_data[p+3])-h_off) * ratio_h;
 			if (do_mirror) {
-				x1 = std::max(0.0f, float(crop_size - 1 - x1));
-				x2 = std::max(0.0f, float(crop_size - 1 - x2));
+				x1 = std::max(0.0f, float(width - 1 - x1));
+				x2 = std::max(0.0f, float(height - 1 - x2));
 				std::swap(x1, x2);
 			}
 			if (std::max(y2-y1, x2-x1) >= 100 && std::min(y2-y1, x2-x1) >= 20) {
