@@ -70,7 +70,7 @@ Contact
 - [Yuanjun Xiong](http://personal.ie.cuhk.edu.hk/~xy012/)
 
 ### Citation
-Your are encouraged to also cite the following report if you find this repo helpful
+You are encouraged to also cite the following report if you find this repo helpful
 
 ```
 @article{MultiGPUCaffe2015,
