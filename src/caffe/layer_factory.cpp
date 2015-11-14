@@ -161,7 +161,7 @@ REGISTER_LAYER_CREATOR(TanH, GetTanHLayer);
 PyThreadState* tstate = NULL;
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetPythonLayer(const LayerParameter& param) {
-
+  boost::lock_guard<boost::mutex> lock(mtx_);
   if (Caffe::py_tstate() == NULL){
     Py_Initialize();
     PyEval_InitThreads();
@@ -183,6 +183,8 @@ shared_ptr<Layer<Dtype> > GetPythonLayer(const LayerParameter& param) {
 }
 
 REGISTER_LAYER_CREATOR(Python, GetPythonLayer);
+
+boost::mutex mtx_;
 #endif
 
 // Layers that use their constructor as their default creator should be

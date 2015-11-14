@@ -155,12 +155,6 @@ Caffe::~Caffe() {
   if (curand_generator_) {
     CURAND_CHECK(curandDestroyGenerator(curand_generator_));
   }
-#ifdef WITH_PYTHON_LAYER
-  if (py_tstate_){
-    PyEval_RestoreThread(py_tstate_);
-    Py_Finalize();
-  }
-#endif
 }
 
 void Caffe::set_random_seed(const unsigned int seed) {
