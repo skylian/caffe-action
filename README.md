@@ -69,6 +69,23 @@ Contact
 - [Limin Wang](http://wanglimin.github.io/)
 - [Yuanjun Xiong](http://personal.ie.cuhk.edu.hk/~xy012/)
 
+### Citation
+You are encouraged to also cite the following report if you find this repo helpful
+
+```
+@article{MultiGPUCaffe2015,
+  author    = {Limin Wang and
+               Yuanjun Xiong and
+               Zhe Wang and
+               Yu Qiao},
+  title     = {Towards Good Practices for Very Deep Two-Stream ConvNets},
+  journal   = {CoRR},
+  volume    = {abs/1507.02159},
+  year      = {2015},
+  url       = {http://arxiv.org/abs/1507.02159},
+}
+```
+
 ----
 Following is the original README of Caffe.
 
