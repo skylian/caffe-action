@@ -48,7 +48,6 @@ class PythonLayer : public Layer<Dtype> {
 
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-    DLOG(INFO)<<"Asking for lock. I am "<<this->layer_param_.python_param().layer().c_str();
     boost::lock_guard<boost::mutex> lock(mtx_);
     PyGILState_STATE state;
     state = PyGILState_Ensure();
@@ -59,7 +58,6 @@ class PythonLayer : public Layer<Dtype> {
       throw;
     }
     PyGILState_Release(state);
-      DLOG(INFO)<<"Reshape done";
   }
 
   virtual inline const char* type() const { return "Python"; }
@@ -67,7 +65,6 @@ class PythonLayer : public Layer<Dtype> {
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-    DLOG(INFO)<<"Asking for lock by forward. I am "<<this->layer_param_.python_param().layer().c_str();
     boost::lock_guard<boost::mutex> lock(mtx_);
     WaitForPrefetchThread();
     PyGILState_STATE state;
@@ -81,7 +78,6 @@ class PythonLayer : public Layer<Dtype> {
     PyGILState_Release(state);
 
     MaybeStartPrefetchThread();
-    DLOG(INFO)<<"Forward done";
   }
   virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
@@ -98,7 +94,6 @@ class PythonLayer : public Layer<Dtype> {
   }
 
   void PrefetchThread(){
-    DLOG(INFO)<<"Asking for lock by prefetcher. I am "<<this->layer_param_.python_param().layer().c_str();
     boost::lock_guard<boost::mutex> lock(mtx_);
     PyThreadState* tstate = PyEval_SaveThread();
     PyGILState_STATE state;
@@ -111,7 +106,6 @@ class PythonLayer : public Layer<Dtype> {
     }
     PyGILState_Release(state);
     PyEval_RestoreThread(tstate);
-    DLOG(INFO)<<"Prefetch done";
   }
 
   void MaybeStartPrefetchThread(){
