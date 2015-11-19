@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "caffe/layer.hpp"
-#include "../../../../../usr/include/boost/thread/lock_guard.hpp"
 
 namespace bp = boost::python;
 #include <boost/thread.hpp>
