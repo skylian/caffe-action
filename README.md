@@ -3,6 +3,8 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
+- Nov 22, 2015
+  * Now python layer can expose a `prefetch()` method, which will be run in parallel with network processing.
 - Oct 13, 2015
   * Improved cuDNN wrapper to use less GPU memory. You are suggested to upgrade to the newest version.
 - Sep. 30, 2015
