@@ -3,6 +3,8 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
+- Nov 22, 2015
+  * Now python layer can expose a `prefetch()` method, which will be run in parallel with network processing.
 - Oct 13, 2015
   * Improved cuDNN wrapper to use less GPU memory. You are suggested to upgrade to the newest version.
 - Sep. 30, 2015
@@ -68,6 +70,23 @@ Its function should be forwarding the "data cursor" in your data layer for one s
 Contact 
 - [Limin Wang](http://wanglimin.github.io/)
 - [Yuanjun Xiong](http://personal.ie.cuhk.edu.hk/~xy012/)
+
+### Citation
+You are encouraged to also cite the following report if you find this repo helpful
+
+```
+@article{MultiGPUCaffe2015,
+  author    = {Limin Wang and
+               Yuanjun Xiong and
+               Zhe Wang and
+               Yu Qiao},
+  title     = {Towards Good Practices for Very Deep Two-Stream ConvNets},
+  journal   = {CoRR},
+  volume    = {abs/1507.02159},
+  year      = {2015},
+  url       = {http://arxiv.org/abs/1507.02159},
+}
+```
 
 ----
 Following is the original README of Caffe.

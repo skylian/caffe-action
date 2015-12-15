@@ -144,6 +144,10 @@ Caffe::Caffe()
   #ifdef USE_CUDNN
     cudnn_mem_richness_ = 1;
   #endif
+
+  #ifdef WITH_PYTHON_LAYER
+  py_tstate_ = NULL;
+  #endif
 }
 
 Caffe::~Caffe() {

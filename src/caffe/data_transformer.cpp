@@ -469,6 +469,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
   } else {
     CHECK_EQ(img_height, height);
     CHECK_EQ(img_width, width);
+    cv_cropped_img = cv_img;
   }
 
   CHECK(cv_cropped_img.data);
