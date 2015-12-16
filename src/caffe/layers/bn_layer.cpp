@@ -11,18 +11,13 @@ template <typename Dtype>
 void BNLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   frozen_ = this->layer_param_.bn_param().frozen();
-  moving_average_ = this->layer_param_.bn_param().moving_average();
   bn_momentum_ = this->layer_param_.bn_param().momentum();
   bn_eps_ = this->layer_param_.bn_param().eps();
   // Initialize parameters
   if (this->blobs_.size() > 0) {
     LOG(INFO) << "Skipping parameter initialization";
   } else {
-    if (moving_average_) {
-      this->blobs_.resize(4);
-    } else {
-      this->blobs_.resize(2);
-    }
+    this->blobs_.resize(4);
     vector<int> shape;
     shape.push_back(1);
     shape.push_back(bottom[0]->channels());
@@ -36,16 +31,14 @@ void BNLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     shared_ptr<Filler<Dtype> > bias_filler(GetFiller<Dtype>(
         this->layer_param_.bn_param().bias_filler()));
     bias_filler->Fill(this->blobs_[1].get());
-    if (this->blobs_.size() > 2) {
-      // moving average mean
-      this->blobs_[2].reset(new Blob<Dtype>(shape));
-      caffe_set(this->blobs_[2]->count(), Dtype(0),
-          this->blobs_[2]->mutable_cpu_data());
-      // moving average variance
-      this->blobs_[3].reset(new Blob<Dtype>(shape));
-      caffe_set(this->blobs_[3]->count(), Dtype(1),
-          this->blobs_[3]->mutable_cpu_data());
-    }
+    // moving average mean
+    this->blobs_[2].reset(new Blob<Dtype>(shape));
+    caffe_set(this->blobs_[2]->count(), Dtype(0),
+        this->blobs_[2]->mutable_cpu_data());
+    // moving average variance
+    this->blobs_[3].reset(new Blob<Dtype>(shape));
+    caffe_set(this->blobs_[3]->count(), Dtype(1),
+        this->blobs_[3]->mutable_cpu_data());
   }
   this->param_propagate_down_.resize(this->blobs_.size(), true);
 }
@@ -65,7 +58,7 @@ void BNLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   batch_statistic_.Reshape(1, channels_, 1, 1);
 
   x_norm_.ReshapeLike(*(bottom[0]));
-  x_std_.ReshapeLike(batch_statistic_);
+  x_inv_std_.ReshapeLike(batch_statistic_);
 
   spatial_sum_multiplier_.Reshape(1, 1, height_, width_);
   caffe_set(spatial_sum_multiplier_.count(), Dtype(1),
@@ -86,7 +79,7 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* shift_data = this->blobs_[1]->cpu_data();
 
   // Mean normalization
-  if (frozen_ || (this->phase_ == TEST && moving_average_)) {
+  if (frozen_ || this->phase_ == TEST) {
     // Use the moving average mean
     caffe_copy(batch_statistic_.count(), this->blobs_[2]->cpu_data(),
         batch_statistic_.mutable_cpu_data());
@@ -101,7 +94,7 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
         batch_sum_multiplier_.cpu_data(), Dtype(0),
         batch_statistic_.mutable_cpu_data());
     // Add to the moving average
-    if (this->phase_ == TRAIN && moving_average_) {
+    if (!frozen_) {
       caffe_cpu_axpby(batch_statistic_.count(),
           Dtype(1) - bn_momentum_, batch_statistic_.cpu_data(),
           bn_momentum_, this->blobs_[2]->mutable_cpu_data());
@@ -120,7 +113,7 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       broadcast_buffer_.cpu_data(), top_data);
 
   // Variance normalization
-  if (frozen_ || (this->phase_ == TEST && moving_average_)) {
+  if (frozen_ || this->phase_ == TEST) {
     // Use the moving average variance
     caffe_copy(batch_statistic_.count(), this->blobs_[3]->cpu_data(),
         batch_statistic_.mutable_cpu_data());
@@ -134,28 +127,29 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     caffe_cpu_gemv<Dtype>(CblasTrans, num_, channels_, Dtype(1) / num_,
         spatial_statistic_.cpu_data(), batch_sum_multiplier_.cpu_data(),
         Dtype(0), batch_statistic_.mutable_cpu_data());
+    // Add eps
+    caffe_add_scalar(batch_statistic_.count(), bn_eps_,
+        batch_statistic_.mutable_cpu_data());
+    // Inverse standard deviation
+    caffe_powx(batch_statistic_.count(), batch_statistic_.cpu_data(),
+        Dtype(-0.5), batch_statistic_.mutable_cpu_data());
     // Add to the moving average
-    if (this->phase_ == TRAIN && moving_average_) {
+    if (!frozen_) {
       caffe_cpu_axpby(batch_statistic_.count(),
           Dtype(1) - bn_momentum_, batch_statistic_.cpu_data(),
           bn_momentum_, this->blobs_[3]->mutable_cpu_data());
     }
   }
-  // Add eps
-  caffe_add_scalar(batch_statistic_.count(), bn_eps_,
-      batch_statistic_.mutable_cpu_data());
-  // Standard deviation
-  caffe_powx(batch_statistic_.count(), batch_statistic_.cpu_data(),
-      Dtype(0.5), batch_statistic_.mutable_cpu_data());
+  // Broadcast the inverse std
   caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,
-      Dtype(1), batch_sum_multiplier_.cpu_data(), batch_statistic_.cpu_data(),
-      Dtype(0), spatial_statistic_.mutable_cpu_data());
+        Dtype(1), batch_sum_multiplier_.cpu_data(), batch_statistic_.cpu_data(),
+        Dtype(0), spatial_statistic_.mutable_cpu_data());
   caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_ * channels_,
       height_ * width_, 1, Dtype(1),
       spatial_statistic_.cpu_data(), spatial_sum_multiplier_.cpu_data(),
       Dtype(0), broadcast_buffer_.mutable_cpu_data());
-  // Divide by the std
-  caffe_div(broadcast_buffer_.count(), const_top_data,
+  // Multiply with the inverse std
+  caffe_mul(broadcast_buffer_.count(), const_top_data,
       broadcast_buffer_.cpu_data(), top_data);
 
   // Save the normalized inputs and std for backprop
@@ -163,7 +157,7 @@ void BNLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     caffe_copy(broadcast_buffer_.count(), const_top_data,
         x_norm_.mutable_cpu_data());
     caffe_copy(batch_statistic_.count(), batch_statistic_.cpu_data(),
-        x_std_.mutable_cpu_data());
+        x_inv_std_.mutable_cpu_data());
   }
 
   // Scale
@@ -196,17 +190,11 @@ void BNLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     if (propagate_down[0]) {
       const Dtype* const_top_diff = top[0]->cpu_diff();
       Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
-      // Use the moving average variance
+      // Use the moving average inverse std
       caffe_copy(batch_statistic_.count(), this->blobs_[3]->cpu_data(),
           batch_statistic_.mutable_cpu_data());
-      // Add eps
-      caffe_add_scalar(batch_statistic_.count(), bn_eps_,
-          batch_statistic_.mutable_cpu_data());
-      // Standard deviation
-      caffe_powx(batch_statistic_.count(), batch_statistic_.cpu_data(),
-          Dtype(0.5), batch_statistic_.mutable_cpu_data());
-      // Divide slope by std
-      caffe_div(batch_statistic_.count(), this->blobs_[0]->cpu_data(),
+      // Multiple slope with inverse std
+      caffe_mul(batch_statistic_.count(), this->blobs_[0]->cpu_data(),
           batch_statistic_.cpu_data(), batch_statistic_.mutable_cpu_data());
       // Broadcast
       caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,
@@ -307,15 +295,15 @@ void BNLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
         broadcast_buffer_.cpu_data(), Dtype(-1) / (num_ * height_ * width_),
         bottom_diff);
 
-    // Divide by the std
+    // Multiply with the inverse std
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,
-        Dtype(1), batch_sum_multiplier_.cpu_data(), x_std_.cpu_data(),
+        Dtype(1), batch_sum_multiplier_.cpu_data(), x_inv_std_.cpu_data(),
         Dtype(0), spatial_statistic_.mutable_cpu_data());
     caffe_cpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_ * channels_,
         height_ * width_, 1, Dtype(1),
         spatial_statistic_.cpu_data(), spatial_sum_multiplier_.cpu_data(),
         Dtype(0), broadcast_buffer_.mutable_cpu_data());
-    caffe_div(broadcast_buffer_.count(), const_bottom_diff,
+    caffe_mul(broadcast_buffer_.count(), const_bottom_diff,
         broadcast_buffer_.cpu_data(), bottom_diff);
   }
 }
@@ -326,6 +314,5 @@ STUB_GPU(BNLayer);
 #endif
 
 INSTANTIATE_CLASS(BNLayer);
-REGISTER_LAYER_CLASS(BN);
 
 }  // namespace caffe

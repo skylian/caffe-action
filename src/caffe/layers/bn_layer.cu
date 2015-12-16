@@ -19,7 +19,7 @@ void BNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const Dtype* shift_data = this->blobs_[1]->gpu_data();
 
   // Mean normalization
-  if (frozen_ || (this->phase_ == TEST && moving_average_)) {
+  if (frozen_ || this->phase_ == TEST) {
     // Use the moving average mean
     caffe_copy(batch_statistic_.count(), this->blobs_[2]->gpu_data(),
         batch_statistic_.mutable_gpu_data());
@@ -34,7 +34,7 @@ void BNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
         batch_sum_multiplier_.gpu_data(), Dtype(0),
         batch_statistic_.mutable_gpu_data());
     // Add to the moving average
-    if (this->phase_ == TRAIN && moving_average_) {
+    if (!frozen_) {
       caffe_gpu_axpby(batch_statistic_.count(),
           Dtype(1) - bn_momentum_, batch_statistic_.gpu_data(),
           bn_momentum_, this->blobs_[2]->mutable_gpu_data());
@@ -53,7 +53,7 @@ void BNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       broadcast_buffer_.gpu_data(), top_data);
 
   // Variance normalization
-  if (frozen_ || (this->phase_ == TEST && moving_average_)) {
+  if (frozen_ || this->phase_ == TEST) {
     // Use the moving average variance
     caffe_copy(batch_statistic_.count(), this->blobs_[3]->gpu_data(),
         batch_statistic_.mutable_gpu_data());
@@ -67,19 +67,20 @@ void BNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     caffe_gpu_gemv<Dtype>(CblasTrans, num_, channels_, Dtype(1) / num_,
         spatial_statistic_.gpu_data(), batch_sum_multiplier_.gpu_data(),
         Dtype(0), batch_statistic_.mutable_gpu_data());
+    // Add eps
+    caffe_gpu_add_scalar(batch_statistic_.count(), bn_eps_,
+        batch_statistic_.mutable_gpu_data());
+    // Inverse standard deviation
+    caffe_gpu_powx(batch_statistic_.count(), batch_statistic_.gpu_data(),
+        Dtype(-0.5), batch_statistic_.mutable_gpu_data());
     // Add to the moving average
-    if (this->phase_ == TRAIN && moving_average_) {
+    if (!frozen_) {
       caffe_gpu_axpby(batch_statistic_.count(),
           Dtype(1) - bn_momentum_, batch_statistic_.gpu_data(),
           bn_momentum_, this->blobs_[3]->mutable_gpu_data());
     }
   }
-  // Add eps
-  caffe_gpu_add_scalar(batch_statistic_.count(), bn_eps_,
-      batch_statistic_.mutable_gpu_data());
-  // Standard deviation
-  caffe_gpu_powx(batch_statistic_.count(), batch_statistic_.gpu_data(),
-      Dtype(0.5), batch_statistic_.mutable_gpu_data());
+  // Broadcast the inverse std
   caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,
       Dtype(1), batch_sum_multiplier_.gpu_data(), batch_statistic_.gpu_data(),
       Dtype(0), spatial_statistic_.mutable_gpu_data());
@@ -87,8 +88,8 @@ void BNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       height_ * width_, 1, Dtype(1),
       spatial_statistic_.gpu_data(), spatial_sum_multiplier_.gpu_data(),
       Dtype(0), broadcast_buffer_.mutable_gpu_data());
-  // Divide by the std
-  caffe_gpu_div(broadcast_buffer_.count(), const_top_data,
+  // Multiply with the inverse std
+  caffe_gpu_mul(broadcast_buffer_.count(), const_top_data,
       broadcast_buffer_.gpu_data(), top_data);
 
   // Save the normalized inputs and std for backprop
@@ -96,7 +97,7 @@ void BNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     caffe_copy(broadcast_buffer_.count(), const_top_data,
         x_norm_.mutable_gpu_data());
     caffe_copy(batch_statistic_.count(), batch_statistic_.gpu_data(),
-        x_std_.mutable_gpu_data());
+        x_inv_std_.mutable_gpu_data());
   }
 
   // Scale
@@ -132,14 +133,8 @@ void BNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       // Use the moving average variance
       caffe_copy(batch_statistic_.count(), this->blobs_[3]->gpu_data(),
           batch_statistic_.mutable_gpu_data());
-      // Add eps
-      caffe_gpu_add_scalar(batch_statistic_.count(), bn_eps_,
-          batch_statistic_.mutable_gpu_data());
-      // Standard deviation
-      caffe_gpu_powx(batch_statistic_.count(), batch_statistic_.gpu_data(),
-          Dtype(0.5), batch_statistic_.mutable_gpu_data());
-      // Divide slope by std
-      caffe_gpu_div(batch_statistic_.count(), this->blobs_[0]->gpu_data(),
+      // Multiple slope with inverse std
+      caffe_gpu_mul(batch_statistic_.count(), this->blobs_[0]->gpu_data(),
           batch_statistic_.gpu_data(), batch_statistic_.mutable_gpu_data());
       // Broadcast
       caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,
@@ -239,15 +234,15 @@ void BNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
         broadcast_buffer_.gpu_data(), Dtype(-1) / (num_ * height_ * width_),
         bottom_diff);
 
-    // Divide by the std
+    // Multiply with the inverse std
     caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_, channels_, 1,
-        Dtype(1), batch_sum_multiplier_.gpu_data(), x_std_.gpu_data(),
+        Dtype(1), batch_sum_multiplier_.gpu_data(), x_inv_std_.gpu_data(),
         Dtype(0), spatial_statistic_.mutable_gpu_data());
     caffe_gpu_gemm<Dtype>(CblasNoTrans, CblasNoTrans, num_ * channels_,
         height_ * width_, 1, Dtype(1),
         spatial_statistic_.gpu_data(), spatial_sum_multiplier_.gpu_data(),
         Dtype(0), broadcast_buffer_.mutable_gpu_data());
-    caffe_gpu_div(broadcast_buffer_.count(), const_bottom_diff,
+    caffe_gpu_mul(broadcast_buffer_.count(), const_bottom_diff,
         broadcast_buffer_.gpu_data(), bottom_diff);
   }
 }

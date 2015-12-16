@@ -9,6 +9,10 @@
 #include "caffe/python_layer.hpp"
 #endif
 
+#ifdef USE_CUDNN
+#include "caffe/util/cudnn.hpp"
+#endif
+
 namespace caffe {
 
 // Get convolution layer according to engine.
@@ -156,6 +160,29 @@ shared_ptr<Layer<Dtype> > GetTanHLayer(const LayerParameter& param) {
 }
 
 REGISTER_LAYER_CREATOR(TanH, GetTanHLayer);
+
+// Get bn layer according to engine.
+template <typename Dtype>
+shared_ptr<Layer<Dtype> > GetBNLayer(const LayerParameter& param) {
+  BNParameter_Engine engine = param.bn_param().engine();
+  if (engine == BNParameter_Engine_DEFAULT) {
+    engine = BNParameter_Engine_CAFFE;
+#if defined(USE_CUDNN) && CUDNN_VERSION_MIN(4, 0, 0)
+    engine = BNParameter_Engine_CUDNN;
+#endif
+  }
+  if (engine == BNParameter_Engine_CAFFE) {
+    return shared_ptr<Layer<Dtype> >(new BNLayer<Dtype>(param));
+#if defined(USE_CUDNN) && CUDNN_VERSION_MIN(4, 0, 0)
+  } else if (engine == BNParameter_Engine_CUDNN) {
+    return shared_ptr<Layer<Dtype> >(new CuDNNBNLayer<Dtype>(param));
+#endif
+  } else {
+    LOG(FATAL) << "Layer " << param.name() << " has unknown engine.";
+  }
+}
+
+REGISTER_LAYER_CREATOR(BN, GetBNLayer);
 
 #ifdef WITH_PYTHON_LAYER
 PyThreadState* tstate = NULL;
