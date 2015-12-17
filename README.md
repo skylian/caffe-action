@@ -3,6 +3,8 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
+- Dec 17, 2015
+  * cuDNN v4 support: faster convolution and batch normalization (around 20% performance gain).
 - Nov 22, 2015
   * Now python layer can expose a `prefetch()` method, which will be run in parallel with network processing.
 - Oct 13, 2015
