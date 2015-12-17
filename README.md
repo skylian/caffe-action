@@ -15,6 +15,8 @@ This branch hosts the code for the technical report ["Towards Good Practices for
   * New mechanism for parallel comminucation reduced parallel overhead.
   * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
 
+[Full Change Log](CHANGELOG.md)
+
 ### Features
 - `VideoDataLayer` for inputing video data.
 - Training on optical flow data. 
