@@ -268,6 +268,8 @@ class CuDNNConvolutionLayer : public ConvolutionLayer<Dtype> {
 
   size_t workspaceSizeInBytes_bwd;  // size of underlying storage
   vector<shared_ptr<SyncedMemory> > workspaceData_bwd;  // underlying storage
+
+  vector<vector<int> > prev_bottom_shapes_;
 };
 #endif
 

@@ -92,6 +92,8 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
   }
 
   handles_setup_ = true;
+
+  prev_bottom_shapes_.resize(bottom.size(), vector<int>());
 }
 
 template <typename Dtype>
@@ -112,6 +114,9 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
   size_t workspace_limit_bytes = size_t(Caffe::cudnn_mem_richness()) * 8*1024*1024;
 
   for (int i = 0; i < bottom.size(); i++) {
+    if (prev_bottom_shapes_[i] == bottom[i]->shape()) continue;
+    prev_bottom_shapes_[i] = bottom[i]->shape();
+
     cudnn::setTensor4dDesc<Dtype>(&bottom_descs_[i],
         this->num_,
         this->channels_ / this->group_,
@@ -130,45 +135,52 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         filter_desc_, this->pad_h_, this->pad_w_,
         this->stride_h_, this->stride_w_);
 
+    // TODO: Find the fastest algorithm that satisfy the memory constraints.
     // choose forward and backward algorithms + workspace(s)
-    CUDNN_CHECK(cudnnGetConvolutionForwardAlgorithm(handle_[0],
-      bottom_descs_[i],
-      filter_desc_,
-      conv_descs_[i],
-      top_descs_[i],
-      CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-      workspace_limit_bytes,
-      &fwd_algo_[i]));
-
-    CUDNN_CHECK(cudnnGetConvolutionForwardWorkspaceSize(handle_[0],
-      bottom_descs_[i],
-      filter_desc_,
-      conv_descs_[i],
-      top_descs_[i],
-      fwd_algo_[i],
-      &(workspace_fwd_sizes_[i])));
+    const int kRequestedForwardAlgoCount = 6;
+    int returnedAlgoCount;
+    cudnnConvolutionFwdAlgoPerf_t forwardAlgoPerfs[kRequestedForwardAlgoCount];
+    CUDNN_CHECK(cudnnFindConvolutionForwardAlgorithm(handle_[0],
+        bottom_descs_[i],
+        filter_desc_,
+        conv_descs_[i],
+        top_descs_[i],
+        kRequestedForwardAlgoCount,
+        &returnedAlgoCount,
+        forwardAlgoPerfs));
+    fwd_algo_[i] = forwardAlgoPerfs[0].algo;
+    workspace_fwd_sizes_[i] = forwardAlgoPerfs[0].memory;
+    LOG(INFO) << "Choose forward algo " << fwd_algo_[i] << " memory " << workspace_fwd_sizes_[i];
 
     // choose backward algorithm for filter
-    CUDNN_CHECK(cudnnGetConvolutionBackwardFilterAlgorithm(handle_[0],
-          bottom_descs_[i], top_descs_[i], conv_descs_[i], filter_desc_,
-          CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
-          workspace_limit_bytes, &bwd_filter_algo_[i]) );
-
-    // get workspace for backwards filter algorithm
-    CUDNN_CHECK(cudnnGetConvolutionBackwardFilterWorkspaceSize(handle_[0],
-          bottom_descs_[i], top_descs_[i], conv_descs_[i], filter_desc_,
-          bwd_filter_algo_[i], &workspace_bwd_filter_sizes_[i]));
+    const int kRequestedBackwardFilterAlgoCount = 4;
+    cudnnConvolutionBwdFilterAlgoPerf_t backwardFilterAlgoPerfs[kRequestedBackwardFilterAlgoCount];
+    CUDNN_CHECK(cudnnFindConvolutionBackwardFilterAlgorithm(handle_[0],
+        bottom_descs_[i],
+        top_descs_[i],
+        conv_descs_[i],
+        filter_desc_,
+        kRequestedBackwardFilterAlgoCount,
+        &returnedAlgoCount,
+        backwardFilterAlgoPerfs));
+    bwd_filter_algo_[i] = backwardFilterAlgoPerfs[0].algo;
+    workspace_bwd_filter_sizes_[i] = backwardFilterAlgoPerfs[0].memory;
+    LOG(INFO) << "Choose backward filter algo " << bwd_filter_algo_[i] << " memory " << workspace_bwd_filter_sizes_[i];
 
     // choose backward algo for data
-    CUDNN_CHECK(cudnnGetConvolutionBackwardDataAlgorithm(handle_[0],
-          filter_desc_, top_descs_[i], conv_descs_[i], bottom_descs_[i],
-          CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
-        workspace_limit_bytes, &bwd_data_algo_[i]));
-
-    // get workspace size
-    CUDNN_CHECK(cudnnGetConvolutionBackwardDataWorkspaceSize(handle_[0],
-          filter_desc_, top_descs_[i], conv_descs_[i], bottom_descs_[i],
-          bwd_data_algo_[i], &workspace_bwd_data_sizes_[i]) );
+    const int kRequestedBackwardDataAlgoCount = 4;
+    cudnnConvolutionBwdDataAlgoPerf_t backwardDataAlgoPerfs[kRequestedBackwardDataAlgoCount];
+    CUDNN_CHECK(cudnnFindConvolutionBackwardDataAlgorithm(handle_[0],
+        filter_desc_,
+        top_descs_[i],
+        conv_descs_[i],
+        bottom_descs_[i],
+        kRequestedBackwardDataAlgoCount,
+        &returnedAlgoCount,
+        backwardDataAlgoPerfs));
+    bwd_data_algo_[i] = backwardDataAlgoPerfs[0].algo;
+    workspace_bwd_data_sizes_[i] = backwardDataAlgoPerfs[0].memory;
+    LOG(INFO) << "Choose backward data algo " << bwd_data_algo_[i] << " memory " << workspace_bwd_data_sizes_[i];
   }
 
   // reduce over all workspace sizes to get a maximum to allocate / reallocate
