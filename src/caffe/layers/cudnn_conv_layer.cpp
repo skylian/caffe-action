@@ -186,9 +186,11 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         &returnedAlgoCount,
         backwardDataAlgoPerfs));
     for (int j = 0; j < returnedAlgoCount; ++j) {
-      bwd_data_algo_[i] = backwardDataAlgoPerfs[j].algo;
-      workspace_bwd_data_sizes_[i] = backwardDataAlgoPerfs[j].memory;
-      break;
+      if (backwardDataAlgoPerfs[j].memory <= workspace_limit_bytes) {
+        bwd_data_algo_[i] = backwardDataAlgoPerfs[j].algo;
+        workspace_bwd_data_sizes_[i] = backwardDataAlgoPerfs[j].memory;
+        break;
+      }
     }
   }
 
