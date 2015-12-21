@@ -135,7 +135,6 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         filter_desc_, this->pad_h_, this->pad_w_,
         this->stride_h_, this->stride_w_);
 
-    // TODO: Find the fastest algorithm that satisfy the memory constraints.
     // choose forward and backward algorithms + workspace(s)
     const int kRequestedForwardAlgoCount = 6;
     int returnedAlgoCount;
@@ -148,9 +147,13 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         kRequestedForwardAlgoCount,
         &returnedAlgoCount,
         forwardAlgoPerfs));
-    fwd_algo_[i] = forwardAlgoPerfs[0].algo;
-    workspace_fwd_sizes_[i] = forwardAlgoPerfs[0].memory;
-    LOG(INFO) << "Choose forward algo " << fwd_algo_[i] << " memory " << workspace_fwd_sizes_[i];
+    for (int j = 0; j < returnedAlgoCount; ++j) {
+      if (forwardAlgoPerfs[j].memory <= workspace_limit_bytes) {
+        fwd_algo_[i] = forwardAlgoPerfs[j].algo;
+        workspace_fwd_sizes_[i] = forwardAlgoPerfs[j].memory;
+        break;
+      }
+    }
 
     // choose backward algorithm for filter
     const int kRequestedBackwardFilterAlgoCount = 4;
@@ -163,9 +166,13 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         kRequestedBackwardFilterAlgoCount,
         &returnedAlgoCount,
         backwardFilterAlgoPerfs));
-    bwd_filter_algo_[i] = backwardFilterAlgoPerfs[0].algo;
-    workspace_bwd_filter_sizes_[i] = backwardFilterAlgoPerfs[0].memory;
-    LOG(INFO) << "Choose backward filter algo " << bwd_filter_algo_[i] << " memory " << workspace_bwd_filter_sizes_[i];
+    for (int j = 0; j < returnedAlgoCount; ++j) {
+      if (backwardFilterAlgoPerfs[j].memory <= workspace_limit_bytes) {
+        bwd_filter_algo_[i] = backwardFilterAlgoPerfs[j].algo;
+        workspace_bwd_filter_sizes_[i] = backwardFilterAlgoPerfs[j].memory;
+        break;
+      }
+    }
 
     // choose backward algo for data
     const int kRequestedBackwardDataAlgoCount = 4;
@@ -178,9 +185,11 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
         kRequestedBackwardDataAlgoCount,
         &returnedAlgoCount,
         backwardDataAlgoPerfs));
-    bwd_data_algo_[i] = backwardDataAlgoPerfs[0].algo;
-    workspace_bwd_data_sizes_[i] = backwardDataAlgoPerfs[0].memory;
-    LOG(INFO) << "Choose backward data algo " << bwd_data_algo_[i] << " memory " << workspace_bwd_data_sizes_[i];
+    for (int j = 0; j < returnedAlgoCount; ++j) {
+      bwd_data_algo_[i] = backwardDataAlgoPerfs[j].algo;
+      workspace_bwd_data_sizes_[i] = backwardDataAlgoPerfs[j].memory;
+      break;
+    }
   }
 
   // reduce over all workspace sizes to get a maximum to allocate / reallocate
