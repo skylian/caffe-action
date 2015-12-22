@@ -8,6 +8,11 @@
 #include "caffe/util/math_functions.hpp"
 #include "caffe/vision_layers.hpp"
 
+#include <boost/unordered_map.hpp>
+#include <cudnn.h>
+
+using boost::unordered_map;
+
 namespace caffe {
 
 // Set to three for the benefit of the backward pass, which
@@ -15,6 +20,161 @@ namespace caffe {
 // bias, filter weights, and bottom data for each group independently
 #define CUDNN_FWD_STREAMS_PER_GROUP 1
 #define CUDNN_BWD_STREAMS_PER_GROUP 2
+
+template <typename Dtype>
+unordered_map<CuDNNConvolutionLayer<Dtype>*, typename CuDNNConvolutionLayer<Dtype>::PerfReg*> CuDNNConvolutionLayer<Dtype>::perf_reg;
+
+template <typename Dtype>
+bool CuDNNConvolutionLayer<Dtype>::need_optimize_ = true;
+
+int mem_tick = 1000 * 100;
+
+typedef struct {
+    float total_time;
+    vector<int> choices;
+}MemRecord;
+
+void updateDict(unordered_map<size_t, MemRecord>& dict, const size_t key, const float time, const vector<int>& choices){
+  MemRecord rec;
+  rec.total_time = time;
+  rec.choices = choices;
+  dict[key] = rec;
+}
+
+template <typename Dtype, typename PerfType>
+void runTransitFunc(unordered_map<size_t, MemRecord>& new_dict, unordered_map<size_t, MemRecord>& prev_dict,
+              const vector<PerfType>& perf, const size_t mem_limit){
+  new_dict.clear();
+  for (size_t i_algo = 0; i_algo < perf.size(); ++i_algo){
+    PerfType algo_perf = perf[i_algo];
+    size_t mem = algo_perf.memory / mem_tick ;
+    float time = algo_perf.time;
+    if (time < 0){
+      continue;
+    }
+    for (unordered_map<size_t, MemRecord>::iterator mc = prev_dict.begin(); mc != prev_dict.end(); ++mc){
+      size_t new_mem = mc->first + mem;
+
+      if (new_mem > mem_limit){
+        continue;
+      }
+      float new_time = mc->second.total_time + time;
+      bool update = false;
+      if (new_dict.find(new_mem) == new_dict.end()){
+        update = true;
+      }else{
+        MemRecord& ext_rec = new_dict[new_mem];
+        if (ext_rec.total_time > new_time){
+          update = true;
+        }
+      }
+
+      if (update) {
+        vector<int> ch = mc->second.choices;
+        ch.push_back(i_algo);
+        updateDict(new_dict, new_mem, new_time, ch);
+        //LOG(INFO)<<new_mem;
+      }
+    }
+  }
+  prev_dict = new_dict;
+};
+
+template <typename Dtype, typename PerfType>
+void initTransitFunc(unordered_map<size_t, MemRecord>& new_dict,
+                    const vector<PerfType>& perf, const size_t mem_limit){
+  new_dict.clear();
+  for (size_t i_algo = 0; i_algo < perf.size(); ++i_algo){
+    PerfType algo_perf = perf[i_algo];
+    size_t mem = algo_perf.memory /mem_tick;
+    float time = algo_perf.time;
+    if (time < 0){
+      continue;
+    }
+    if (new_dict.find(mem) == new_dict.end()){
+      vector<int> tmp;
+      tmp.push_back(i_algo);
+      updateDict(new_dict, mem, time, tmp);
+    }else{
+      //check and update
+      MemRecord& rec = new_dict[mem];
+      if (time < rec.total_time){
+        //update
+        vector<int> tmp;
+        tmp.push_back(i_algo);
+        updateDict(new_dict,mem, time, tmp);
+      }
+    }
+  }
+};
+
+template <typename Dtype>
+void CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(size_t mem_limit) {
+
+  if (!need_optimize_){
+    return;
+  }
+  unordered_map<size_t, MemRecord> prev_dict;
+  unordered_map<size_t, MemRecord> new_dict;
+
+  //iterate
+  for (typename unordered_map<CuDNNConvolutionLayer *, PerfReg *>::iterator layer_reg = perf_reg.begin();
+       layer_reg != perf_reg.end(); ++layer_reg) {
+    PerfReg &layer_perf = *(layer_reg->second);
+
+    //foward
+    for (int x = 0; x < layer_perf.fwd_perf.size(); ++x)
+      if (prev_dict.size() == 0) {
+        initTransitFunc<Dtype, cudnnConvolutionFwdAlgoPerf_t>(prev_dict, layer_perf.fwd_perf[x], mem_limit);
+      } else
+        runTransitFunc<Dtype, cudnnConvolutionFwdAlgoPerf_t>(new_dict, prev_dict, layer_perf.fwd_perf[x], mem_limit);
+
+    //bwd filter
+    for (int x = 0; x < layer_perf.bwd_filter_perf.size(); ++x) {
+      runTransitFunc<Dtype, cudnnConvolutionBwdFilterAlgoPerf_t>(new_dict,
+                                                                 prev_dict,
+                                                                 layer_perf.bwd_filter_perf[x],
+                                                                 mem_limit);
+    }
+    //bwd data
+    for (int x = 0; x < layer_perf.bwd_data_perf.size(); ++x)
+      runTransitFunc<Dtype, cudnnConvolutionBwdDataAlgoPerf_t>(new_dict,
+                                                               prev_dict,
+                                                               layer_perf.bwd_data_perf[x],
+                                                               mem_limit);
+  }
+
+  // find optimal
+  MemRecord *min_rec = &prev_dict.begin()->second;
+  for (unordered_map<size_t, MemRecord>::iterator mc = prev_dict.begin(); mc != prev_dict.end(); ++mc) {
+    if (mc->second.total_time < min_rec->total_time) {
+      min_rec = &mc->second;
+    }
+  }
+
+  //set optimal result
+  vector<int> &choices = min_rec->choices;
+  int cnt = 0;
+  for (typename unordered_map<CuDNNConvolutionLayer *, PerfReg *>::iterator layer_reg = perf_reg.begin();
+       layer_reg != perf_reg.end(); ++layer_reg){
+    PerfReg &layer_perf = *(layer_reg->second);
+    for (int x = 0; x < layer_perf.fwd_perf.size(); ++x) {
+      layer_perf.fwd_algo[x] = choices[cnt++];
+    }
+
+    for (int x = 0; x < layer_perf.bwd_filter_perf.size(); ++x) {
+      layer_perf.bwd_filter_algo[x] = choices[cnt++];
+    }
+
+    for (int x = 0; x < layer_perf.fwd_perf.size(); ++x) {
+      layer_perf.bwd_data_algo[x] = choices[cnt++];
+    }
+    layer_reg->first->AdjustWorkSpaces();
+  }
+
+  need_optimize_ = false;
+  LOG(INFO)<<"Optimized cudnn conv";
+}
 
 /**
  * TODO(dox) explain cuDNN interface
@@ -38,12 +198,27 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
   workspace_bwd_filter_sizes_ = new size_t[bottom.size()];
   workspace_bwd_data_sizes_ = new size_t[bottom.size()];
 
+  // initilized perf reg
+  layer_perf_.bwd_filter_perf.resize(bottom.size());
+  layer_perf_.bwd_data_perf.resize(bottom.size());
+  layer_perf_.fwd_perf.resize(bottom.size());
+
+  perf_reg[this] = &layer_perf_;
+
+
+  layer_perf_.bwd_filter_algo.resize(bottom.size());
+  layer_perf_.bwd_data_algo.resize(bottom.size());
+  layer_perf_.fwd_algo.resize(bottom.size());
+
+
   // workspace data sizes start with zero
   workspaceSizeInBytes_fwd = workspaceSizeInBytes_bwd = 0;
   for (int i = 0; i < this->group_*CUDNN_FWD_STREAMS_PER_GROUP; ++i)
     workspaceData_fwd.push_back(shared_ptr<SyncedMemory>(new SyncedMemory()));
   for (int i = 0; i < this->group_*CUDNN_BWD_STREAMS_PER_GROUP; ++i)
-    workspaceData_bwd.push_back(shared_ptr<SyncedMemory>(new SyncedMemory()));
+    workspaceData_bwd_filter.push_back(shared_ptr<SyncedMemory>(new SyncedMemory()));
+  for (int i = 0; i < this->group_*CUDNN_BWD_STREAMS_PER_GROUP; ++i)
+    workspaceData_bwd_data.push_back(shared_ptr<SyncedMemory>(new SyncedMemory()));
 
 
   for (size_t i = 0; i < bottom.size(); ++i) {
@@ -111,122 +286,80 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
   // However this can be tuned by the "richness" parameter in the solver protobuf
   // By setting richness, you can increase the memory available to cuDNN and thus
   // let it choose fast but space consuming algorithms.
-  size_t workspace_limit_bytes = size_t(Caffe::cudnn_mem_richness()) * 8*1024*1024;
-
   for (int i = 0; i < bottom.size(); i++) {
     if (prev_bottom_shapes_[i] == bottom[i]->shape()) continue;
     prev_bottom_shapes_[i] = bottom[i]->shape();
 
     cudnn::setTensor4dDesc<Dtype>(&bottom_descs_[i],
-        this->num_,
-        this->channels_ / this->group_,
-        this->height_, this->width_,
-        this->channels_ * this->height_ * this->width_,
-        this->height_ * this->width_,
-        this->width_, 1);
+                                  this->num_,
+                                  this->channels_ / this->group_,
+                                  this->height_, this->width_,
+                                  this->channels_ * this->height_ * this->width_,
+                                  this->height_ * this->width_,
+                                  this->width_, 1);
     cudnn::setTensor4dDesc<Dtype>(&top_descs_[i],
-        this->num_,
-        this->num_output_ / this->group_,
-        this->height_out_, this->width_out_,
-        this->num_output_ * this->height_out_ * this->width_out_,
-        this->height_out_ * this->width_out_,
-        this->width_out_, 1);
+                                  this->num_,
+                                  this->num_output_ / this->group_,
+                                  this->height_out_, this->width_out_,
+                                  this->num_output_ * this->height_out_ * this->width_out_,
+                                  this->height_out_ * this->width_out_,
+                                  this->width_out_, 1);
     cudnn::setConvolutionDesc<Dtype>(&conv_descs_[i], bottom_descs_[i],
-        filter_desc_, this->pad_h_, this->pad_w_,
-        this->stride_h_, this->stride_w_);
+                                     filter_desc_, this->pad_h_, this->pad_w_,
+                                     this->stride_h_, this->stride_w_);
 
     // choose forward and backward algorithms + workspace(s)
     const int kRequestedForwardAlgoCount = 6;
+    vector<cudnnConvolutionFwdAlgoPerf_t> fwd_perf;
+    fwd_perf.resize(kRequestedForwardAlgoCount);
     int returnedAlgoCount;
-    cudnnConvolutionFwdAlgoPerf_t forwardAlgoPerfs[kRequestedForwardAlgoCount];
     CUDNN_CHECK(cudnnFindConvolutionForwardAlgorithm(handle_[0],
-        bottom_descs_[i],
-        filter_desc_,
-        conv_descs_[i],
-        top_descs_[i],
-        kRequestedForwardAlgoCount,
-        &returnedAlgoCount,
-        forwardAlgoPerfs));
-    for (int j = 0; j < returnedAlgoCount; ++j) {
-      if (forwardAlgoPerfs[j].memory <= workspace_limit_bytes) {
-        fwd_algo_[i] = forwardAlgoPerfs[j].algo;
-        workspace_fwd_sizes_[i] = forwardAlgoPerfs[j].memory;
-        break;
-      }
-    }
+                                                     bottom_descs_[i],
+                                                     filter_desc_,
+                                                     conv_descs_[i],
+                                                     top_descs_[i],
+                                                     kRequestedForwardAlgoCount,
+                                                     &returnedAlgoCount,
+                                                     &fwd_perf[0]));
+    layer_perf_.fwd_perf[i] =
+        vector<cudnnConvolutionFwdAlgoPerf_t>(fwd_perf.begin(), fwd_perf.begin() + returnedAlgoCount);
+
 
     // choose backward algorithm for filter
     const int kRequestedBackwardFilterAlgoCount = 4;
-    cudnnConvolutionBwdFilterAlgoPerf_t backwardFilterAlgoPerfs[kRequestedBackwardFilterAlgoCount];
+    vector<cudnnConvolutionBwdFilterAlgoPerf_t> bwd_filter_perf;
+    bwd_filter_perf.resize(kRequestedBackwardFilterAlgoCount);
     CUDNN_CHECK(cudnnFindConvolutionBackwardFilterAlgorithm(handle_[0],
-        bottom_descs_[i],
-        top_descs_[i],
-        conv_descs_[i],
-        filter_desc_,
-        kRequestedBackwardFilterAlgoCount,
-        &returnedAlgoCount,
-        backwardFilterAlgoPerfs));
-    for (int j = 0; j < returnedAlgoCount; ++j) {
-      if (backwardFilterAlgoPerfs[j].memory <= workspace_limit_bytes) {
-        bwd_filter_algo_[i] = backwardFilterAlgoPerfs[j].algo;
-        workspace_bwd_filter_sizes_[i] = backwardFilterAlgoPerfs[j].memory;
-        break;
-      }
+                                                            bottom_descs_[i],
+                                                            top_descs_[i],
+                                                            conv_descs_[i],
+                                                            filter_desc_,
+                                                            kRequestedBackwardFilterAlgoCount,
+                                                            &returnedAlgoCount,
+                                                            &bwd_filter_perf[0]));
+    layer_perf_.bwd_filter_perf[i] = vector<cudnnConvolutionBwdFilterAlgoPerf_t>(bwd_filter_perf.begin(),
+                                                                                 bwd_filter_perf.begin()
+                                                                                     + returnedAlgoCount);
+    if (layer_perf_.bwd_filter_perf[i][0].algo == 2){
+      LOG(INFO)<<"fft context time "<<layer_perf_.bwd_filter_perf[i][0].time<<" mem "<<layer_perf_.bwd_filter_perf[i][0].memory;
     }
 
     // choose backward algo for data
     const int kRequestedBackwardDataAlgoCount = 4;
-    cudnnConvolutionBwdDataAlgoPerf_t backwardDataAlgoPerfs[kRequestedBackwardDataAlgoCount];
+    vector<cudnnConvolutionBwdDataAlgoPerf_t> bwd_data_perf;
+    bwd_data_perf.resize(kRequestedBackwardDataAlgoCount);
     CUDNN_CHECK(cudnnFindConvolutionBackwardDataAlgorithm(handle_[0],
-        filter_desc_,
-        top_descs_[i],
-        conv_descs_[i],
-        bottom_descs_[i],
-        kRequestedBackwardDataAlgoCount,
-        &returnedAlgoCount,
-        backwardDataAlgoPerfs));
-    for (int j = 0; j < returnedAlgoCount; ++j) {
-      if (backwardDataAlgoPerfs[j].memory <= workspace_limit_bytes) {
-        bwd_data_algo_[i] = backwardDataAlgoPerfs[j].algo;
-        workspace_bwd_data_sizes_[i] = backwardDataAlgoPerfs[j].memory;
-        break;
-      }
-    }
-  }
+                                                          filter_desc_,
+                                                          top_descs_[i],
+                                                          conv_descs_[i],
+                                                          bottom_descs_[i],
+                                                          kRequestedBackwardDataAlgoCount,
+                                                          &returnedAlgoCount,
+                                                          &bwd_data_perf[0]));
+    layer_perf_.bwd_data_perf[i] = vector<cudnnConvolutionBwdDataAlgoPerf_t>(bwd_data_perf.begin(),
+                                                                             bwd_data_perf.begin() + returnedAlgoCount);
 
-  // reduce over all workspace sizes to get a maximum to allocate / reallocate
-  size_t total_workspace_fwd = 0;
-  size_t total_workspace_bwd_data = 0;
-  size_t total_workspace_bwd_filter = 0;
-
-  for (size_t i = 0; i < bottom.size(); i++) {
-    total_workspace_fwd        = std::max(total_workspace_fwd,
-                                     workspace_fwd_sizes_[i]);
-    total_workspace_bwd_data   = std::max(total_workspace_bwd_data,
-                                     workspace_bwd_data_sizes_[i]);
-    total_workspace_bwd_filter = std::max(total_workspace_bwd_filter,
-                                     workspace_bwd_filter_sizes_[i]);
-  }
-  // get max workspace for both forward and backward operations
-  size_t max_workspace_fwd = 0;
-  size_t max_workspace_bwd = 0;
-  max_workspace_fwd = total_workspace_fwd;
-  max_workspace_bwd = std::max(total_workspace_bwd_data, total_workspace_bwd_filter);
-
-  // adjust forward workspace if necessary
-  if (max_workspace_fwd > workspaceSizeInBytes_fwd){
-    workspaceSizeInBytes_fwd = max_workspace_fwd;
-    for (int i = 0; i < this->group_ * CUDNN_FWD_STREAMS_PER_GROUP; ++i){
-      workspaceData_fwd[i].reset(new SyncedMemory(workspaceSizeInBytes_fwd));
-    }
-  }
-
-  // adjust backward workspace if necessary
-  if (max_workspace_bwd > workspaceSizeInBytes_bwd){
-    workspaceSizeInBytes_bwd = max_workspace_bwd;
-    for (int i = 0; i < this->group_ * CUDNN_BWD_STREAMS_PER_GROUP; ++i){
-      workspaceData_bwd[i].reset(new SyncedMemory(workspaceSizeInBytes_bwd));
-    }
+    need_optimize_ = true;
   }
 
 
@@ -235,6 +368,55 @@ void CuDNNConvolutionLayer<Dtype>::Reshape(
     cudnn::setTensor4dDesc<Dtype>(&bias_desc_,
         1, this->num_output_ / this->group_, 1, 1);
   }
+}
+
+template<typename Dtype>
+void CuDNNConvolutionLayer<Dtype>::AdjustWorkSpaces() {
+
+  for (int x = 0; x < layer_perf_.fwd_algo.size(); ++x){
+    cudnnConvolutionFwdAlgo_t new_algo = layer_perf_.fwd_perf[x][layer_perf_.fwd_algo[x]].algo;
+    size_t new_mem = layer_perf_.fwd_perf[x][layer_perf_.fwd_algo[x]].memory;
+    if ((new_algo != fwd_algo_[x]) || (new_mem != workspace_fwd_sizes_[x])) {
+      fwd_algo_[x] = new_algo;
+      workspace_fwd_sizes_[x] = layer_perf_.fwd_perf[x][layer_perf_.fwd_algo[x]].memory;
+      if(workspace_fwd_sizes_[x] > workspaceData_fwd.size()){
+        for (int g = 0; g < this->group_; ++g){
+          workspaceData_fwd[g].reset(new SyncedMemory(workspace_fwd_sizes_[x]));
+        }
+      }
+    }
+  }
+
+  for (int x = 0; x < layer_perf_.bwd_filter_algo.size(); ++x){
+    cudnnConvolutionBwdFilterAlgo_t new_algo = layer_perf_.bwd_filter_perf[x][layer_perf_.bwd_filter_algo[x]].algo;
+    size_t new_mem = layer_perf_.bwd_filter_perf[x][layer_perf_.bwd_filter_algo[x]].memory;
+
+    if ((new_algo != bwd_filter_algo_[x]) || (new_mem != workspace_bwd_filter_sizes_[x])) {
+      bwd_filter_algo_[x] = new_algo;
+      workspace_bwd_filter_sizes_[x] = new_mem;
+      if(workspace_bwd_filter_sizes_[x] > workspaceData_bwd_filter[0]->size()){
+        for (int g = 0; g < this->group_; ++g){
+          workspaceData_bwd_filter[g].reset(new SyncedMemory(new_mem));
+        }
+      }
+    }
+  }
+
+  for (int x = 0; x < layer_perf_.bwd_data_algo.size(); ++x){
+    cudnnConvolutionBwdDataAlgo_t new_algo = layer_perf_.bwd_data_perf[x][layer_perf_.bwd_data_algo[x]].algo;
+    size_t new_mem = layer_perf_.bwd_data_perf[x][layer_perf_.bwd_data_algo[x]].memory;
+    if ((new_algo != bwd_data_algo_[x]) || (new_mem != workspace_bwd_data_sizes_[x])) {
+      bwd_data_algo_[x] = new_algo;
+      workspace_bwd_data_sizes_[x] = new_mem;
+      if(workspace_bwd_data_sizes_[x] > workspaceData_bwd_data[0]->size()){
+        for (int g = 0; g < this->group_; ++g){
+          workspaceData_bwd_data[g].reset(new SyncedMemory(new_mem));
+        }
+      }
+    }
+  }
+
+
 }
 
 template <typename Dtype>
@@ -259,7 +441,8 @@ CuDNNConvolutionLayer<Dtype>::~CuDNNConvolutionLayer() {
   }
 
   // release all allocated workspace memory blocks.
-  workspaceData_bwd.empty();
+  workspaceData_bwd_filter.empty();
+  workspaceData_bwd_data.empty();
   workspaceData_fwd.empty();
 
   delete [] stream_;
