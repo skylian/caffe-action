@@ -118,6 +118,7 @@ void CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(size_t mem_limit) {
   unordered_map<size_t, MemRecord> prev_dict;
   unordered_map<size_t, MemRecord> new_dict;
 
+  mem_limit *= (Caffe::cudnn_mem_richness() > 0);
   //iterate
   for (typename unordered_map<CuDNNConvolutionLayer *, PerfReg *>::iterator layer_reg = perf_reg.begin();
        layer_reg != perf_reg.end(); ++layer_reg) {
