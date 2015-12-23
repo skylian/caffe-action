@@ -734,7 +734,8 @@ class BNLayer : public Layer<Dtype> {
 };
 
 
-#if defined(USE_CUDNN) && CUDNN_VERSION_MIN(4, 0, 0)
+#if defined(USE_CUDNN) 
+#if CUDNN_VERSION_MIN(4, 0, 0)
 /**
  * @brief cuDNN implementation of BNLayer.
  *        Fallback to BNLayer for CPU mode.
@@ -771,6 +772,7 @@ class CuDNNBNLayer : public BNLayer<Dtype> {
   Blob<Dtype> save_mean_;
   Blob<Dtype> save_inv_variance_;
 };
+#endif
 #endif
 
 /**

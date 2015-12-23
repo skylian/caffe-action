@@ -167,17 +167,21 @@ shared_ptr<Layer<Dtype> > GetBNLayer(const LayerParameter& param) {
   BNParameter_Engine engine = param.bn_param().engine();
   if (engine == BNParameter_Engine_DEFAULT) {
     engine = BNParameter_Engine_CAFFE;
-#if defined(USE_CUDNN) && CUDNN_VERSION_MIN(4, 0, 0)
+#if defined(USE_CUDNN) 
+#if CUDNN_VERSION_MIN(4, 0, 0)
     engine = BNParameter_Engine_CUDNN;
+#endif
 #endif
   }
   if (engine == BNParameter_Engine_CAFFE) {
     LOG(INFO) << "Layer " << param.name() << " is using CAFFE engine.";
     return shared_ptr<Layer<Dtype> >(new BNLayer<Dtype>(param));
-#if defined(USE_CUDNN) && CUDNN_VERSION_MIN(4, 0, 0)
+#if defined(USE_CUDNN) 
+#if CUDNN_VERSION_MIN(4, 0, 0)
   } else if (engine == BNParameter_Engine_CUDNN) {
     LOG(INFO) << "Layer " << param.name() << " is using CUDNN engine.";
     return shared_ptr<Layer<Dtype> >(new CuDNNBNLayer<Dtype>(param));
+#endif
 #endif
   } else {
     LOG(FATAL) << "Layer " << param.name() << " has unknown engine.";

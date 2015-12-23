@@ -68,6 +68,10 @@ void ScatterLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
 #endif
 }
 
+#ifdef CPU_ONLY
+STUB_GPU(ScatterLayer);
+#endif
+
 INSTANTIATE_CLASS(ScatterLayer);
 REGISTER_LAYER_CLASS(Scatter);
 
