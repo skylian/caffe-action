@@ -559,7 +559,7 @@ Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
   }
 
 #ifdef USE_CUDNN
-  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(Caffe::cudnn_mem_richness() * 100);
+  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(1000);
 #endif
   return loss;
 }
@@ -806,7 +806,7 @@ void Net<Dtype>::Reshape() {
   }
 
 #ifdef USE_CUDNN
-  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(Caffe::cudnn_mem_richness() * 100);
+  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(1000);
 #endif
 }
 
