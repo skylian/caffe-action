@@ -17,7 +17,7 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 - Training on optical flow data. 
 - Data augmentation with fixed corner cropping and multi-scale cropping.
 - Parallel training with multiple GPUs.
-- cuDNNv3 integration.
+- cuDNNv4 integration.
 
 ### Usage
 Generally it's the same as the original caffe. Please see the original README. 
