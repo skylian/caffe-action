@@ -8,7 +8,10 @@ env:
 language: cpp
 
 # Cache Ubuntu apt packages.
-cache: apt
+cache:
+  apt: true
+  directories:
+    - /home/travis/miniconda
 
 compiler: gcc
 
