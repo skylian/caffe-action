@@ -203,8 +203,9 @@ message SolverParameter {
   // If false, don't save a snapshot after training finishes.
   optional bool snapshot_after_train = 28 [default = true];
 
-  // how rich you are in terms of GPU memory, usually set between 1 and 100
-  optional int32 richness = 37 [default = 1];
+  // Total memory allowed to be used for workspaces in cudnn's convolution, in MBs. default is 300MB.
+  // The framework will try to find the fastest setup given this limit.
+  optional int32 richness = 37 [default = 300];
 }
 
 // A message that stores the solver snapshots
