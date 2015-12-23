@@ -44,7 +44,7 @@ template <typename Dtype, typename PerfType>
 void runTransitFunc(unordered_map<size_t, MemRecord>& new_dict, unordered_map<size_t, MemRecord>& prev_dict,
               const vector<PerfType>& perf, const size_t mem_limit){
   new_dict.clear();
-  int mem_tick = Caffe::cudnn_mem_richness() * 1000;
+  int mem_tick = (Caffe::cudnn_mem_richness()>0)?Caffe::cudnn_mem_richness() * 1000 : 1000;
   for (size_t i_algo = 0; i_algo < perf.size(); ++i_algo){
     PerfType algo_perf = perf[i_algo];
     size_t mem = (algo_perf.memory + mem_tick -1) / mem_tick ;
@@ -84,7 +84,7 @@ template <typename Dtype, typename PerfType>
 void initTransitFunc(unordered_map<size_t, MemRecord>& new_dict,
                     const vector<PerfType>& perf, const size_t mem_limit){
   new_dict.clear();
-  int mem_tick = Caffe::cudnn_mem_richness() * 1000;
+  int mem_tick = (Caffe::cudnn_mem_richness()>0)?Caffe::cudnn_mem_richness() * 1000 : 1000;
   for (size_t i_algo = 0; i_algo < perf.size(); ++i_algo){
     PerfType algo_perf = perf[i_algo];
     size_t mem = (algo_perf.memory + mem_tick -1) / mem_tick;
