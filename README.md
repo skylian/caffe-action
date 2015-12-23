@@ -33,9 +33,9 @@ Please see following instruction for accessing features above. More detailed doc
   - Set `multi_scale` to `true` in `transform_param`
   - In `transform_param`, specify `scale_ratios` as a list of floats smaller than one, default is `[1, .875, .75, .65]`
   - In `transform_param`, specify `max_distort` to an integer, which will limit the aspect ratio distortion, default to `1`
-- cuDNN v3
- - Current default config for cuDNNv3 yields a reasonable speed up over cuDNNv2. You can get this by simply replacing the library files.
- - If you have plenty of GPU memory, there is parameter `richness` in the solver protobuf. Setting it to a number higher than `1`, e.g. `10` or `20`, will potentially further accelerate the computation, but this will cost a significant amount of GPU memory.
+- cuDNN v4
+ - The cuDNN v4 wrapper has optimized engines for convolution and batch normalization.
+ - The solver protobuf config has a parameter `richness` which specifies the total GPU memory in MBs available to the cudnn convolution engine as workspaces. Default `richness` is 300 (300MB). Using this parameter you can control the GPU memory consumption of training, the system will find the best setup under the memory limit for you.
 - Training with multiple GPUs
   - Requires OpenMPI > 1.7.4 ([Why?](https://www.open-mpi.org/faq/?category=runcuda)). **Remember to compile your OpenMPI with option `--with-cuda`**
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
