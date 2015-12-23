@@ -10,9 +10,6 @@ namespace caffe {
   void caffe_iallreduce(Dtype* data, int count);
 
   template <typename Dtype>
-  void caffe_iallreduce(Dtype* data, int count, cudaStream_t stream);
-
-  template <typename Dtype>
   void caffe_iallreduce(Dtype* src_data, Dtype* dst_data, int count);
 
   template <typename Dtype>

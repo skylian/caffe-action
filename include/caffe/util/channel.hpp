@@ -33,7 +33,6 @@ public:
   int count_;
   int dtype_size_;
   OperationType op_;
-  cudaStream_t stream_;
 };
 
 class MPIComm{
