@@ -15,8 +15,6 @@ if $WITH_CMAKE; then
   else
     cmake -DBUILD_python=ON -DCMAKE_BUILD_TYPE=Release -DCPU_ONLY=OFF ..
     $MAKE
-    $MAKE runtest
-    #$MAKE lint
   fi
   $MAKE clean
   cd -
