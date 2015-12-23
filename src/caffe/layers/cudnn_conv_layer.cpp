@@ -88,7 +88,7 @@ void initTransitFunc(unordered_map<size_t, MemRecord>& new_dict,
   for (size_t i_algo = 0; i_algo < perf.size(); ++i_algo){
     PerfType algo_perf = perf[i_algo];
     size_t mem = (algo_perf.memory + mem_tick -1) / mem_tick;
-    if（mem > mem_limit) continue;
+    if (mem > mem_limit) continue;
     float time = algo_perf.time;
     if (time < 0){
       continue;
