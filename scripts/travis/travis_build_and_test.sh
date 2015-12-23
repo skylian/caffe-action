@@ -11,13 +11,12 @@ if $WITH_CMAKE; then
     cmake -DBUILD_python=ON -DCMAKE_BUILD_TYPE=Release -DCPU_ONLY=ON ..
     $MAKE
     $MAKE runtest
-    $MAKE lint
+    #$MAKE lint
   else
     cmake -DBUILD_python=ON -DCMAKE_BUILD_TYPE=Release -DCPU_ONLY=OFF ..
     $MAKE
     $MAKE runtest
-    $MAKE lint
-
+    #$MAKE lint
   fi
   $MAKE clean
   cd -
