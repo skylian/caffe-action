@@ -806,7 +806,7 @@ void Net<Dtype>::Reshape() {
   }
 
 #ifdef USE_CUDNN
-  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(Caffe::cudnn_mem_richness() * 300);
+  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(Caffe::cudnn_mem_richness() * 100);
 #endif
 }
 
