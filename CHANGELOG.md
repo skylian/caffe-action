@@ -12,7 +12,7 @@ Features:
 
   - cuDNN v4 support
   - 20% overall speed gain with faster convolution and batch normalization
-  - the native batch normalization is changed to comply with cuDNN. Use the script in `python/` to upgrade your models.
+  - the native batch normalization is changed to comply with cuDNN. Use the script `python/bn_var_to_inv_std.py` to upgrade your models.
   
 ## Nov 22, 2015
 
