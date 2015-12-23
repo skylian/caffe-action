@@ -9,13 +9,6 @@ This branch hosts the code for the technical report ["Towards Good Practices for
   * cuDNN v4 support: faster convolution and batch normalization (around 20% performance gain).
 - Nov 22, 2015
   * Now python layer can expose a `prefetch()` method, which will be run in parallel with network processing.
-- Oct 13, 2015
-  * Improved cuDNN wrapper to use less GPU memory. You are suggested to upgrade to the newest version.
-- Sep. 30, 2015
-  * Support for [cuDNN v3](https://developer.nvidia.com/cudnn). 
-- Sep. 7, 2015
-  * New mechanism for parallel comminucation reduced parallel overhead.
-  * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
 
 [Full Change Log](CHANGELOG.md)
 
