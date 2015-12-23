@@ -18,6 +18,7 @@
 #include "caffe/util/mpi_functions.hpp"
 
 #include "caffe/test/test_caffe_main.hpp"
+#include "caffe/vision_layers.hpp"
 
 namespace caffe {
 
@@ -204,7 +205,7 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
   // loss.  We can skip backward computation for blobs that don't contribute
   // to the loss.
   // Also checks if all bottom blobs don't need backward computation (possible
-  // because the skip_propagate_down param) and so we can skip bacward
+  // because the skip_propagate_down param) and so we can skip backward
   // computation for the entire layer
   set<string> blobs_under_loss;
   set<string> blobs_skip_backp;
@@ -556,6 +557,10 @@ Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
     loss += layer_loss;
     if (debug_info_) { ForwardDebugInfo(i); }
   }
+
+#ifdef USE_CUDNN
+  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(1000);
+#endif
   return loss;
 }
 
@@ -799,6 +804,10 @@ void Net<Dtype>::Reshape() {
   for (int i = 0; i < layers_.size(); ++i) {
     layers_[i]->Reshape(bottom_vecs_[i], top_vecs_[i]);
   }
+
+#ifdef USE_CUDNN
+  CuDNNConvolutionLayer<Dtype>::RuntimeOptimize(1000);
+#endif
 }
 
 template <typename Dtype>
