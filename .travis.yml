@@ -36,7 +36,7 @@ notifications:
 # your Caffe fork.  To configure your git email address, use:
 #     git config --global user.email me@example.com
   email:
-    on_success: always
+    on_success: change
     on_failure: always
 
 # IRC notifications disabled by default.

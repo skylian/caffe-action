@@ -18,9 +18,6 @@ namespace caffe {
   template void caffe_iallreduce<float>(float* data, int count);
   template void caffe_iallreduce<double>(double* data, int count);
 
-  template void caffe_iallreduce<float>(float* data, int count, cudaStream_t stream);
-  template void caffe_iallreduce<double>(double* data, int count, cudaStream_t stream);
-
   template <typename Dtype>
   void caffe_iallreduce(Dtype* src_data, Dtype* dst_data, int count){
     MPIJob job = {src_data, dst_data, count, sizeof(Dtype), OP_SUM_ALL};
