@@ -3,6 +3,8 @@
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
+- Dec 23, 2015
+  * Refactored cudnn wrapper to control overall memory consumption. Will automatically find the best algorithm combination under memory constraint.
 - Dec 17, 2015
   * cuDNN v4 support: faster convolution and batch normalization (around 20% performance gain).
 - Nov 22, 2015
