@@ -1,3 +1,11 @@
+## Dec 23, 2015
+
+Features:
+
+  - Implemented a planning algorithm to globally optimize the cudnn workspace consumption and speed trade-off.
+  - Now `richness` parameter specifies the total memory in MBs available to cudnn for convolution workspaces.
+  - Now the framework will try to find the best convolution algorithm combinations under memory limit.
+  
 ## Dec 17, 2015
 
 Features:
