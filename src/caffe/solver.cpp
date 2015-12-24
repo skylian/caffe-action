@@ -299,9 +299,15 @@ void Solver<Dtype>::SyncGradient(){
     // conduct gradient synchronization here
     if (is_self && need_sync){
 
+#ifndef CPU_ONLY
       caffe_gpu_scal(net_params[param_id]->count(),
                      Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
                      net_params[param_id]->mutable_gpu_diff());
+#else
+      caffe_scal(net_params[param_id]->count(),
+                     Dtype(1.)/Dtype(Caffe::MPI_all_rank()),
+                     net_params[param_id]->mutable_cpu_diff());
+#endif
     }
   }
   t2 = MPI_Wtime();
