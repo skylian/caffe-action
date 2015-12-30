@@ -206,6 +206,7 @@ void CuDNNConvolutionLayer<Dtype>::LayerSetUp(
   layer_perf_.bwd_data_perf.resize(bottom.size());
   layer_perf_.fwd_perf.resize(bottom.size());
 
+  // register the layer to cudnn conv registry for global planning
   perf_reg[this] = &layer_perf_;
 
 
@@ -456,6 +457,11 @@ CuDNNConvolutionLayer<Dtype>::~CuDNNConvolutionLayer() {
   delete [] workspace_fwd_sizes_;
   delete [] workspace_bwd_data_sizes_;
   delete [] workspace_bwd_filter_sizes_;
+
+  if (perf_reg.find(this) != perf_reg.end()){
+    // un-register when the layer gets destroyed
+    perf_reg.erase(this);
+  }
 }
 
 INSTANTIATE_CLASS(CuDNNConvolutionLayer);
