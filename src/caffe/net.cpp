@@ -82,6 +82,24 @@ void Net<Dtype>::Init(const NetParameter& in_param) {
     if (!param.layer(layer_id).has_phase()) {
       param.mutable_layer(layer_id)->set_phase(phase_);
     }
+    // Setup BN params implicitly.
+    if (param.layer(layer_id).type() == "BN") {
+      LayerParameter* layer_param = param.mutable_layer(layer_id);
+      if (layer_param->param_size() > 2) {
+        LOG(FATAL) << "Layer " << layer_param->name()
+                   << " must have no more than two specified params";
+      }
+      while (layer_param->param_size() < 4) {
+        ParamSpec* param = layer_param->add_param();
+        if (layer_param->param_size() <= 2) {
+          param->set_lr_mult(1);
+          param->set_decay_mult(0);
+        } else {
+          param->set_lr_mult(0);
+          param->set_decay_mult(0);
+        }
+      }
+    }
     // Setup layer.
     const LayerParameter& layer_param = param.layer(layer_id);
     if (layer_param.propagate_down_size() > 0) {
