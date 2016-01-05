@@ -32,21 +32,29 @@ def main(args):
             if bottom in bottom_layer.top:
                 if bottom_layer.type not in ['Convolution', 'InnerProduct']:
                     can_be_absorbed = False
-        if not can_be_absorbed: continue
-        to_be_absorbed.append(layer.name)
-        # Rename the top blobs
-        for j in xrange(i + 1, len(model.layer)):
-            top_layer = model.layer[j]
-            if top in top_layer.bottom:
-                names = list(top_layer.bottom)
-                names[names.index(top)] = bottom
-                del(top_layer.bottom[:])
-                top_layer.bottom.extend(names)
-            if top in top_layer.top:
-                names = list(top_layer.top)
-                names[names.index(top)] = bottom
-                del(top_layer.top[:])
-                top_layer.top.extend(names)
+        if can_be_absorbed:
+            to_be_absorbed.append(layer.name)
+            # Rename the top blobs
+            for j in xrange(i + 1, len(model.layer)):
+                top_layer = model.layer[j]
+                if top in top_layer.bottom:
+                    names = list(top_layer.bottom)
+                    names[names.index(top)] = bottom
+                    del(top_layer.bottom[:])
+                    top_layer.bottom.extend(names)
+                if top in top_layer.top:
+                    names = list(top_layer.top)
+                    names[names.index(top)] = bottom
+                    del(top_layer.top[:])
+                    top_layer.top.extend(names)
+        else:
+            # Freeze the BN layer
+            layer.bn_param.frozen = True
+            del(layer.param[:])
+            param = caffe.proto.caffe_pb2.ParamSpec()
+            param.lr_mult = 0
+            param.decay_mult = 0
+            layer.param.extend([param] * 2)
 
     # Save the prototxt
     output_model_layers = [layer for layer in model.layer
@@ -62,18 +70,15 @@ def main(args):
     weights = caffe.Net(args.model, args.weights, caffe.TEST)
     for i, layer in enumerate(model.layer):
         if layer.name not in to_be_absorbed: continue
-        scale, bias, mean, invstd = [p.data for p in weights.params[layer.name]]
+        scale, bias, mean, invstd = [p.data.ravel()
+                                     for p in weights.params[layer.name]]
         for j in xrange(i - 1, -1, -1):
             bottom_layer = model.layer[j]
             if layer.bottom[0] in bottom_layer.top:
                 W, b = weights.params[bottom_layer.name]
                 num = W.data.shape[0]
-                if bottom_layer.type == 'Convolution':
-                    W.data[...] = (W.data * scale.reshape(num, 1, 1, 1)
-                                          * invstd.reshape(num, 1, 1, 1))
-                elif bottom_layer.type == 'InnerProduct':
-                    W.data[...] = (W.data * scale.reshape(num, 1)
-                                          * invstd.reshape(num, 1))
+                W.data[...] = (W.data * scale[:, None, None, None]
+                                      * invstd[:, None, None, None])
                 b.data[...] = (b.data[...] - mean) * scale * invstd + bias
 
     # Save the caffemodel
