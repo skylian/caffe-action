@@ -3,7 +3,6 @@
 '''
 A sample script to run classificition using both spatial/temporal nets.
 Modify this script as needed.
-
 '''
 
 import numpy as np
@@ -37,8 +36,11 @@ def main():
     model_file = '../dextro_benchmark_flow_iter_39000.caffemodel'
     temporal_net = caffe.Net(model_def_file, model_file, caffe.TEST)
 
-    # input video (containing image_*.jpg and flow_*.jpg)
-    input_video_dir = 'video/';
+    # input video (containing image_*.jpg and flow_*.jpg) and some settings
+    input_video_dir = 'video/'
+    start_frame = 0
+    num_categories = 131
+    feature_layer = 'fc8-2'
 
     # temporal net prediction
     temporal_mean_file = 'flow_mean.mat'
@@ -46,8 +48,9 @@ def main():
             input_video_dir,
             temporal_mean_file,
             temporal_net,
-            start_frame,
-            num_frames)
+            num_categories,
+            feature_layer,
+            start_frame)
     avg_temporal_pred_fc8 = np.mean(temporal_prediction, axis=1)
     avg_temporal_pred = softmax(avg_temporal_pred_fc8)
 
@@ -56,9 +59,10 @@ def main():
     spatial_prediction = VideoSpatialPrediction(
             input_video_dir,
             spatial_mean_file,
-            spatial_net
-            start_frame
-            num_frames)
+            spatial_net,
+            num_categories,
+            feature_layer,
+            start_frame)
     avg_spatial_pred_fc8 = np.mean(spatial_prediction, axis=1)
     avg_spatial_pred = softmax(avg_spatial_pred_fc8)
 

@@ -11,12 +11,17 @@ import math
 import cv2
 import scipy.io as sio
 
-def VideoTemporalPrediction(vid_name, mean_file, net, start_frame=0, num_frames=0):
-
-    num = 25
-    L = 10
-    num_categories = 131
-    feature_layer = 'fc8-2'
+def VideoTemporalPrediction(
+        vid_name,
+        mean_file,
+        net,
+        num_categories,
+        feature_layer,
+        start_frame=0,
+        num_frames=0,
+        num_samples=25,
+        optical_flow_frames=10
+        ):
 
     if num_frames == 0:
         imglist = glob.glob(os.path.join(vid_name, '*flow_x*.jpg'))
@@ -25,13 +30,13 @@ def VideoTemporalPrediction(vid_name, mean_file, net, start_frame=0, num_frames=
         duration = num_frames
 
     # selection
-    step = int(math.floor((duration-L+1)/num))
-    dims = (256,340,L*2,num)
+    step = int(math.floor((duration-optical_flow_frames+1)/num_samples))
+    dims = (256,340,optical_flow_frames*2,num_samples)
     flow = np.zeros(shape=dims, dtype=np.float64)
     flow_flip = np.zeros(shape=dims, dtype=np.float64)
 
-    for i in range(num):
-        for j in range(L):
+    for i in range(num_samples):
+        for j in range(optical_flow_frames):
             flow_x_file = os.path.join(vid_name, 'flow_x_{0:05d}.jpg'.format(i*step+j+1 + start_frame))
             flow_y_file = os.path.join(vid_name, 'flow_y_{0:05d}.jpg'.format(i*step+j+1 + start_frame))
             img_x = cv2.imread(flow_x_file, cv2.IMREAD_GRAYSCALE)
