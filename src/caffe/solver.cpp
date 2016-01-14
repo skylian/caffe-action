@@ -276,7 +276,6 @@ template <typename Dtype>
 void Solver<Dtype>::SyncGradient(){
 
   const vector<int>& param_owners = this->net_->param_owners();
-  const vector<pair<int, int> >& param_layer_indices = this->net_->param_layer_indices();
   const vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
   shared_ptr<Layer<Dtype> > layer;
   double t1, t2;
@@ -284,13 +283,12 @@ void Solver<Dtype>::SyncGradient(){
 
   mpi_force_synchronize();
   for (int param_id = 0; param_id < net_params.size(); ++param_id) {
-    int param_ownner = param_owners[param_id];
+    int param_owner = param_owners[param_id];
 
 
     // is_self is a flag for whether we need to sync this blob
     // if not, this blob has already been synced.
-    bool is_self = (param_ownner == -1)
-                   || (param_layer_indices[param_ownner].second == param_ownner);
+    bool is_self = (param_owner == -1);
 
     // need_sync is a flag for whether we need sync the gradient
     layer = this->net_->layer_by_param(param_id);
@@ -318,16 +316,14 @@ template <typename Dtype>
 void Solver<Dtype>::SyncData(){
 
   const vector<int>& param_owners = this->net_->param_owners();
-  const vector<pair<int, int> >& param_layer_indices = this->net_->param_layer_indices();
   const vector<shared_ptr<Blob<Dtype> > >& net_params = this->net_->params();
   double t1, t2;
   t1 = MPI_Wtime();
   for (int param_id = 0; param_id < net_params.size(); ++param_id) {
-    int param_ownner = param_owners[param_id];
+    int param_owner = param_owners[param_id];
     // is_self is a flag for whether we need to sync this blob
     // if not, this blob has already been synced.
-    bool is_self = (param_ownner == -1)
-                   || (param_layer_indices[param_ownner].second == param_ownner);
+    bool is_self = (param_owner == -1);
     // conduct data synchronization here
     if (is_self){
       Dtype* data = net_params[param_id]->mutable_cpu_data();
