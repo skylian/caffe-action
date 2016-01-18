@@ -22,6 +22,9 @@ This branch hosts the code for the technical report ["Towards Good Practices for
 - cuDNNv4 integration.
 
 ### Usage
+
+*See more in* [Wiki](https://github.com/yjxiong/caffe/wiki).
+
 Generally it's the same as the original caffe. Please see the original README. 
 Please see following instruction for accessing features above. More detailed documentation is on the way.
 
