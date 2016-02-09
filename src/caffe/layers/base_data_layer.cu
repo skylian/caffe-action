@@ -48,7 +48,7 @@ void BasePrefetchingROILayer<Dtype>::Forward_gpu(
     caffe_copy(prefetch_label_.count(), prefetch_label_.cpu_data(),
         top[1]->mutable_gpu_data());
   }
-  if (this->has_roi_data_) {
+  if (this->num_rois_) {
 	  top[2]->ReshapeLike(prefetch_roi_);
 	  caffe_copy(prefetch_roi_.count(), prefetch_roi_.cpu_data(),
 			  top[2]->mutable_gpu_data());

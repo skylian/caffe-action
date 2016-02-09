@@ -16,6 +16,7 @@
 #include "caffe/common.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/io.hpp"
+#include "matio.h"
 
 const int kProtoReadBytesLimit = INT_MAX;  // Max size of 2 GB minus 1 byte.
 
@@ -496,5 +497,62 @@ bool ReadSegmentRGBFlowToDatum(const vector<string>& root_folders, const string&
 	}
 	return true;
 }
+
+template <typename Dtype>
+bool ReadROI(const string roi_file, Blob<Dtype> &roi, const int id) {
+	mat_t * matfp;
+	matvar_t * matvar, *cell;
+	bool ret = true;
+
+	matfp = Mat_Open(roi_file.c_str(), MAT_ACC_RDONLY);
+	if (matfp == NULL) {
+		LOG(ERROR)  << "Error opening MAT file " << roi_file;
+		return false;
+	}
+
+	matvar = Mat_VarReadNextInfo(matfp);
+	if (!matvar) {
+		LOG(ERROR) << "Error reading MAT file " << roi_file;
+		Mat_Close(matfp);
+		return false;
+	}
+	if (matvar->class_type != MAT_C_CELL) {
+		LOG(ERROR) << "Variable in roi file should be a cell: " << roi_file;
+		ret = false;
+	} else if (id >= matvar->dims[0]) {
+		LOG(ERROR) << "index out of range: " << roi_file;
+		ret = false;
+	} else {
+		cell = Mat_VarGetCell(matvar, id);
+		if (cell->rank != 2) {
+			LOG(ERROR) << "ROI data should be a 2-D matrix: " << roi_file;
+			ret = false;
+		} else if (cell->class_type != MAT_C_SINGLE) {
+			LOG(ERROR) << "ROI data should be of type single: " << roi_file;
+			ret = false;
+		} else {
+			vector<int> shape(2);
+			shape[0] = cell->dims[1];
+			shape[1] = cell->dims[0];
+			roi.Reshape(shape);
+			float *roi_array = new float [cell->dims[0]*cell->dims[1]];
+			if (Mat_VarReadDataLinear(matfp, cell, roi_array, 0, 1, cell->dims[0]*cell->dims[1])) {
+				LOG(ERROR) << "ROI reading error: " << ret;
+				ret = false;
+			} else {
+				Dtype *roi_data = roi.mutable_cpu_data();
+				for (int i = 0; i < roi.count(); ++i)
+					roi_data[i] = roi_array[i];
+			}
+			delete [] roi_array;
+		}
+	}
+
+	Mat_VarFree(matvar);
+	Mat_Close(matfp);
+	return ret;
+}
+template bool ReadROI<double>(const string roi_file, Blob<double> &roi, const int id);
+template bool ReadROI<float>(const string roi_file, Blob<float> &roi, const int id);
 
 }  // namespace caffe

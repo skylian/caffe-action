@@ -269,7 +269,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 149 (last added: ROIPoolingParameter)
+// LayerParameter next available layer-specific ID: 150 (last added: MILParameter)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -343,6 +343,7 @@ message LayerParameter {
   optional MatReadParameter mat_read_param = 143;
   optional MatWriteParameter mat_write_param = 144;
   optional MemoryDataParameter memory_data_param = 119;
+  optional MILParameter mil_param = 149;
   optional MVNParameter mvn_param = 120;  
   optional PoolingParameter pooling_param = 121;
   optional PowerParameter power_param = 122;
@@ -731,6 +732,11 @@ message MemoryDataParameter {
   optional uint32 width = 4;
 }
 
+// Message that stores parameters used by MILLayer
+message MILParameter {
+  optional uint32 instances_per_bag = 1 [default = 1]; // The number of boxes per example
+}
+
 message MVNParameter {
   // This parameter can be set to false to normalize mean only
   optional bool normalize_variance = 1 [default = true];
@@ -1038,6 +1044,7 @@ message VideoDataParameter{
   optional uint32 interval = 15 [default = 0];
   optional uint32 num_labels = 16 [default = 1];
   optional string roi_folder = 17 [default = ''];
+  optional uint32 num_rois = 18 [default = 0];
 }
 
 // DEPRECATED: use LayerParameter.

@@ -26,18 +26,13 @@ VideoDataLayer<Dtype>:: ~VideoDataLayer<Dtype>(){
 template <typename Dtype>
 void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top){
 	const VideoDataParameter& video_data_param = this->layer_param_.video_data_param();
-	const int new_height  = video_data_param.new_height();
-	const int new_width  = video_data_param.new_width();
+
 	new_length_.clear();
 	std::copy(video_data_param.new_length().begin(), video_data_param.new_length().end(), std::back_inserter(new_length_));
 	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
 		CHECK_EQ(new_length_.size(),2) << "Two new_length has to be specified for modality BOTH.";
 	else
 		CHECK_EQ(new_length_.size(), 1) << "One new_length should be specified for modality FLOW or RGB.";
-
-	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
-	const int num_segments = video_data_param.num_segments();
-	const string& source = video_data_param.source();
 	
     root_folders_.clear();
 	std::copy(video_data_param.root_folder().begin(), video_data_param.root_folder().end(),
@@ -51,8 +46,8 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 		CHECK_GT(interval, 0) << "Flow data must have interval > 0.";
 	
     num_labels_ = video_data_param.num_labels();
-	LOG(INFO) << "number of labels: " << num_labels_	;
-	
+	LOG(INFO) << "number of labels: " << num_labels_;
+	const string& source = video_data_param.source();
     LOG(INFO) << "Opening file: " << source;
 	std:: ifstream infile(source.c_str());
 	string filename;
@@ -70,10 +65,13 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 		prefetch_rng_2_.reset(new Caffe::RNG(prefectch_rng_seed));
 		ShuffleVideos();
 	}
-
 	LOG(INFO) << "A total of " << lines_.size() << " videos.";
 	lines_id_ = 0;
 
+	const int new_height  = video_data_param.new_height();
+	const int new_width  = video_data_param.new_width();
+	const int num_segments = video_data_param.num_segments();
+	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	Datum datum;
 	const unsigned int frame_prefectch_rng_seed = caffe_rng_rand();
 	frame_prefetch_rng_.reset(new Caffe::RNG(frame_prefectch_rng_seed));
@@ -104,15 +102,12 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
 	top[1]->Reshape(batch_size, num_labels_, 1, 1);
 	this->prefetch_label_.Reshape(batch_size, num_labels_, 1, 1);
 
-    roi_folder_ = this->layer_param_.video_data_param().roi_folder();
-    this->has_roi_data_ = !roi_folder_.empty();
-    if (this->has_roi_data_) {
+	this->num_rois_ = this->layer_param_.video_data_param().num_rois();
+    if (this->num_rois_) {
         CHECK_EQ(top.size(), 3) << "There should be 3 tops when ROIs are given.";
-        CHECK_EQ(batch_size, 1) << "Currently video data layer only supports batch_size == 1 when ROIs are given.";
-        CHECK_EQ(num_segments, 1) << "Currently video data layer only supports num_segments == 1 when ROIs are given.";
-        // We put actual reshape of top[2] in data fetch stage, as the number of ROIs is unknown yet
-        top[2]->Reshape(batch_size, 100, 5, 1);
-        this->prefetch_roi_.Reshape(batch_size, 1000, 5, 1);
+        CHECK_EQ(num_segments, 1) << "Number of segments per video should be one when ROIs are given.";
+        top[2]->Reshape(batch_size, this->num_rois_, 5, 1);
+        this->prefetch_roi_.Reshape(batch_size, this->num_rois_, 5, 1);
     }
     else {
     	CHECK_EQ(top.size(), 2) << "There should be 2 tops.";
@@ -132,35 +127,42 @@ void VideoDataLayer<Dtype>::ShuffleVideos(){
 
 template <typename Dtype>
 void VideoDataLayer<Dtype>::InternalThreadEntry(){
+	const VideoDataParameter& video_data_param = this->layer_param_.video_data_param();
+	const int batch_size = video_data_param.batch_size();
+	const int new_height = video_data_param.new_height();
+	const int new_width = video_data_param.new_width();
+	const int num_segments = video_data_param.num_segments();
+	string roi_folder = this->layer_param_.video_data_param().roi_folder();
+	num_labels_ = video_data_param.num_labels();
 
 	Datum datum;
 	CHECK(this->prefetch_data_.count());
 	Dtype* top_data = this->prefetch_data_.mutable_cpu_data();
 	Dtype* top_label = this->prefetch_label_.mutable_cpu_data();
 
-	const VideoDataParameter& video_data_param = this->layer_param_.video_data_param();
-	const int batch_size = video_data_param.batch_size();
-	const int new_height = video_data_param.new_height();
-	const int new_width = video_data_param.new_width();
-	const int num_segments = video_data_param.num_segments();
-	const int lines_size = lines_.size();
 	new_length_.clear();
 	std::copy(video_data_param.new_length().begin(), video_data_param.new_length().end(), std::back_inserter(new_length_));
 	if (video_data_param.modality() == VideoDataParameter_Modality_BOTH)
-			CHECK_EQ(new_length_.size(),2) << "Two new_length has to be specified for modality BOTH.";
-		else
-			CHECK_EQ(new_length_.size(), 1) << "One new_length should be specified for modality FLOW or RGB.";
-	int max_length = *std::max_element(new_length_.begin(), new_length_.end());
+		CHECK_EQ(new_length_.size(),2) << "Two new_length has to be specified for modality BOTH.";
+	else
+		CHECK_EQ(new_length_.size(), 1) << "One new_length should be specified for modality FLOW or RGB.";
+
 	root_folders_.clear();
 	std::copy(video_data_param.root_folder().begin(), video_data_param.root_folder().end(),
 			std::back_inserter(root_folders_));
-	num_labels_ = video_data_param.num_labels();
 
+	Blob<Dtype> rois;
+	const int max_length = *std::max_element(new_length_.begin(), new_length_.end());
+	const int lines_size = lines_.size();
+	vector<int> shape(2);
+    shape[0] = batch_size * this->num_rois_;
+    shape[1] = 5;
+    this->prefetch_roi_.Reshape(shape);
 	for (int item_id = 0; item_id < batch_size; ++item_id){
 		CHECK_GT(lines_size, lines_id_);
 		vector<int> offsets;
 		int average_duration = (int) lines_duration_[lines_id_] / num_segments;
-		for (int i = 0; i < num_segments; ++i){
+		for (int i = 0; i < num_segments; ++i) {
 			if (this->phase_==TRAIN){
 				caffe::rng_t* frame_rng = static_cast<caffe::rng_t*>(frame_prefetch_rng_->generator());
 				int offset = (*frame_rng)() % (average_duration - max_length + 1);
@@ -186,30 +188,36 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 			top_label[item_id*num_labels_+l] = (lines_[lines_id_].second)[l];
 		}
 
-		int offset1 = this->prefetch_data_.offset(item_id);
-		this->transformed_data_.set_cpu_data(top_data + offset1);
-        if (this->has_roi_data_) {
+		this->transformed_data_.set_cpu_data(top_data + this->prefetch_data_.offset(item_id));
+        if (this->num_rois_) {
         	boost::filesystem::path roi_path(lines_[lines_id_].first);
-            string roi_file = roi_folder_ + roi_path.stem().string() + ".mat";
-            Blob<Dtype> roi_blob;
-            CHECK(ReadROI(roi_file, &roi_blob, offsets[0])) << "Error reading ROI file " << roi_file
-            												<< "at index " << offsets[0]
-            												<< ". Please check the log.";
+            string roi_file = roi_folder + roi_path.stem().string() + ".mat";
+            CHECK(ReadROI(roi_file, rois, offsets[0])) << "Error reading ROI file " << roi_file
+            		                                   << "at index " << offsets[0]
+            		                                   << ". Please check the log.";
+            LOG(INFO) << "Read " << lines_[lines_id_].first << " at " << offsets[0];
+            this->data_transformer_->Transform(datum, &(this->transformed_data_), &rois);
 
-            this->data_transformer_->Transform(datum, &(this->transformed_data_), &roi_blob);
-            vector<int> shape(3);
-            shape[0] = batch_size;
-            shape[1] = roi_blob.shape(0);
-            shape[2] = roi_blob.shape(1)+1;
-
-            this->prefetch_roi_.Reshape(shape);
-            Dtype *roi_top = this->prefetch_roi_.mutable_cpu_data() + this->prefetch_roi_.offset(item_id);
-            const Dtype *roi_data = roi_blob.cpu_data();
-            for (int n=0, count=0, c=0; n < roi_blob.shape(0); ++n) {
-            	roi_top[c++] = item_id;
-            	for (int d = 0; d < roi_blob.shape(1); ++d) {
-            		roi_top[c++] = roi_data[count++];
-            	}
+            Dtype *roi_top = this->prefetch_roi_.mutable_cpu_data() + this->prefetch_roi_.offset(item_id*this->num_rois_);
+            const Dtype *roi_data = rois.cpu_data();
+            int n = 0;
+            for (int p = 0; p < rois.count() && n < this->num_rois_-1; p+=rois.shape(1)) {
+            	int x1 = roi_data[p], y1 = roi_data[p+1], x2 = roi_data[p+2], y2 = roi_data[p+3];
+				if (std::min(x2-x1, y2-y1) >= 50) {
+					int c = this->prefetch_roi_.shape(1) * n;
+					roi_top[c] = item_id;
+					for (int i = 0; i < 4; ++i)
+						roi_top[c+i+1] = roi_data[p+i];
+					n++;
+				}
+            }
+            for (; n < this->num_rois_; ++n) {
+            	int c = this->prefetch_roi_.shape(1) * n;
+            	roi_top[c] = item_id;
+				roi_top[c+1] = 0;
+				roi_top[c+2] = 0;
+				roi_top[c+3] = this->transformed_data_.shape(3)-1;
+				roi_top[c+4] = this->transformed_data_.shape(2)-1;
             }
         }
         else {

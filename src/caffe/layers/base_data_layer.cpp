@@ -101,7 +101,7 @@ void BasePrefetchingROILayer<Dtype>::LayerSetUp(
   if (this->output_labels_) {
     this->prefetch_label_.mutable_cpu_data();
   }
-  if (this->has_roi_data_) {
+  if (this->num_rois_) {
 	  this->prefetch_roi_.mutable_cpu_data();
   }
 #ifdef USE_MPI

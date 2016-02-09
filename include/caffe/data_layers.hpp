@@ -7,7 +7,6 @@
 
 #include "boost/scoped_ptr.hpp"
 #include "hdf5.h"
-#include "matio.h"
 
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
@@ -135,11 +134,11 @@ public:
 	}
 
 protected:
-	bool has_roi_data_;
 	Blob<Dtype> prefetch_data_;
 	Blob<Dtype> prefetch_label_;
 	Blob<Dtype> prefetch_roi_;
 	Blob<Dtype> transformed_data_;
+	int num_rois_;
 };
 
 template<typename Dtype>
@@ -419,63 +418,6 @@ protected:
 	virtual void InternalThreadEntry();
 
 private:
-	bool ReadROI(const string roi_file, Blob<Dtype> *roi, int id) {
-		mat_t * matfp;
-		matvar_t * matvar, *cell;
-
-		matfp = Mat_Open(roi_file.c_str(), MAT_ACC_RDONLY);
-		if (matfp == NULL) {
-			LOG(ERROR)  << "Error opening MAT file " << roi_file;
-			return false;
-		}
-
-		matvar = Mat_VarReadNextInfo(matfp);
-		if (!matvar) {
-			LOG(ERROR) << "Error reading MAT file " << roi_file;
-			Mat_Close(matfp);
-			return false;
-		}
-		if (matvar->class_type != MAT_C_CELL) {
-			LOG(ERROR) << "Variable in roi file should be a cell: " << roi_file;
-			Mat_VarFree(matvar);
-			Mat_Close(matfp);
-			return false;
-		}
-
-		if (id >= matvar->dims[0]) {
-			LOG(ERROR) << "index out of range: " << roi_file;
-			Mat_VarFree(matvar);
-			Mat_Close(matfp);
-			return false;
-		}
-		cell = Mat_VarGetCell(matvar, id); // only supports num_segments == 1 currently
-		if (cell->rank != 2) {
-			LOG(ERROR) << "ROI data should be a 2-D matrix: " << roi_file;
-			Mat_VarFree(matvar);
-			Mat_Close(matfp);
-			return false;
-		}
-		if (cell->class_type != MAT_C_SINGLE) {
-			LOG(ERROR) << "ROI data should be of type single: " << roi_file;
-			Mat_VarFree(matvar);
-			Mat_Close(matfp);
-			return false;
-		}
-		vector<int> shape(2);
-		shape[0] = cell->dims[1];
-		shape[1] = cell->dims[0];
-		roi->Reshape(shape);
-		int ret = Mat_VarReadDataLinear(matfp, cell, roi->mutable_cpu_data(), 0, 1, cell->dims[0]*cell->dims[1]);
-		if (ret) {
-			LOG(ERROR) << "ROI reading error: " << ret;
-			Mat_VarFree(matvar);
-			Mat_Close(matfp);
-			return false;
-		}
-		Mat_VarFree(matvar);
-		Mat_Close(matfp);
-		return true;
-	}
 
 #ifdef USE_MPI
 	inline virtual void advance_cursor() {
@@ -495,7 +437,6 @@ private:
 	vector<int> lines_duration_;
 	vector<int> new_length_;
 	vector<string> root_folders_;
-	string roi_folder_;
 	int lines_id_;
 	int num_labels_;
 };

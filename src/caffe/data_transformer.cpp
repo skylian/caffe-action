@@ -180,35 +180,26 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 			w_off = (datum_width - crop_size) / 2;
 		}
 	}
-
 	if (roi) {
-		int cur = 0;
 		Dtype x1, y1, x2, y2;
 		float ratio_w = crop_width ? float(crop_size)/crop_width : 1, ratio_h = crop_height ? float(crop_size)/crop_height : 1;
 		Dtype *roi_data = roi->mutable_cpu_data();
-		for (int n = 0, p = 0; n < roi->shape(0); ++n, p+=4) {
-			x1 = std::max(0.0f, float(roi_data[p])-w_off) * ratio_w;
-			y1 = std::max(0.0f, float(roi_data[p+1])-h_off) * ratio_h;
-			x2 = std::max(0.0f, float(roi_data[p+2])-w_off) * ratio_w;
-			y2 = std::max(0.0f, float(roi_data[p+3])-h_off) * ratio_h;
+		LOG(INFO) << "Transform " << crop_width << " " << crop_height << " " << w_off << " " << h_off;
+		for (int n = 0, p = 0; n < roi->shape(0); ++n, p+=roi->shape(1)) {
+			x1 = std::min(crop_width-1.0f, std::max(0.0f, float(roi_data[p])-w_off))*ratio_w;
+			y1 = std::min(crop_height-1.0f, std::max(0.0f, float(roi_data[p+1])-h_off))*ratio_h;
+			x2 = std::min(crop_width-1.0f, std::max(0.0f, float(roi_data[p+2])-w_off))*ratio_w;
+			y2 = std::min(crop_height-1.0f, std::max(0.0f, float(roi_data[p+3])-h_off))*ratio_h;
 			if (do_mirror) {
-				x1 = std::max(0.0f, float(width - 1 - x1));
-				x2 = std::max(0.0f, float(height - 1 - x2));
+				x1 = width - 1 - x1;
+				x2 = width - 1 - x2;
 				std::swap(x1, x2);
 			}
-			if (std::max(y2-y1, x2-x1) >= 100 && std::min(y2-y1, x2-x1) >= 20) {
-				roi_data[cur++] = x1;
-				roi_data[cur++] = y1;
-				roi_data[cur++] = x2;
-				roi_data[cur++] = y2;
-			}
+			roi_data[p]= x1;
+			roi_data[p+1] = y1;
+			roi_data[p+2] = x2;
+			roi_data[p+3] = y2;
 		}
-		vector<int> shape(2);
-		shape[0] = cur / 4;
-		shape[1] = 4;
-		Blob<Dtype> new_roi(shape);
-		caffe_copy(new_roi.count(), roi_data, new_roi.mutable_cpu_data());
-		roi->CopyFrom(new_roi, false, true);
 	}
 
 	need_imgproc = do_multi_scale && crop_size && ((crop_height != crop_size) || (crop_width != crop_size));
