@@ -493,7 +493,7 @@ void DataTransformer<Dtype>::Transform(const cv::Mat& cv_img,
           int mean_index = (do_multi_scale) ?
                            (c * img_height + h) * img_width + w
                                             : (c * img_height + h_off + h) * img_width + w_off + w;
-          if (param_.is_flow() && do_mirror)
+          if (param_.is_flow() && do_mirror && c % 2 ==0)
             transformed_data[top_index] =
                 (255 - pixel - mean[mean_index]) * scale;
           else
