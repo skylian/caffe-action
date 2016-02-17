@@ -184,7 +184,6 @@ void DataTransformer<Dtype>::Transform(const Datum& datum, Dtype* transformed_da
 		Dtype x1, y1, x2, y2;
 		float ratio_w = crop_width ? float(crop_size)/crop_width : 1, ratio_h = crop_height ? float(crop_size)/crop_height : 1;
 		Dtype *roi_data = roi->mutable_cpu_data();
-		LOG(INFO) << "Transform " << crop_width << " " << crop_height << " " << w_off << " " << h_off;
 		for (int n = 0, p = 0; n < roi->shape(0); ++n, p+=roi->shape(1)) {
 			x1 = std::min(crop_width-1.0f, std::max(0.0f, float(roi_data[p])-w_off))*ratio_w;
 			y1 = std::min(crop_height-1.0f, std::max(0.0f, float(roi_data[p+1])-h_off))*ratio_h;

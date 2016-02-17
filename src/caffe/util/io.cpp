@@ -534,17 +534,21 @@ bool ReadROI(const string roi_file, Blob<Dtype> &roi, const int id) {
 			vector<int> shape(2);
 			shape[0] = cell->dims[1];
 			shape[1] = cell->dims[0];
-			roi.Reshape(shape);
-			float *roi_array = new float [cell->dims[0]*cell->dims[1]];
-			if (Mat_VarReadDataLinear(matfp, cell, roi_array, 0, 1, cell->dims[0]*cell->dims[1])) {
-				LOG(ERROR) << "ROI reading error: " << ret;
-				ret = false;
-			} else {
-				Dtype *roi_data = roi.mutable_cpu_data();
-				for (int i = 0; i < roi.count(); ++i)
-					roi_data[i] = roi_array[i];
-			}
-			delete [] roi_array;
+            if (shape[0] == 0 || shape[1] == 0) {
+                ret = false;
+            } else {
+    			roi.Reshape(shape);
+	    		float *roi_array = new float [cell->dims[0]*cell->dims[1]];
+		    	if (Mat_VarReadDataLinear(matfp, cell, roi_array, 0, 1, cell->dims[0]*cell->dims[1])) {
+			    	LOG(ERROR) << "ROI reading error: " << ret;
+				    ret = false;
+    			} else {
+	    			Dtype *roi_data = roi.mutable_cpu_data();
+		    		for (int i = 0; i < roi.count(); ++i)
+			    		roi_data[i] = roi_array[i];
+    			}
+    			delete [] roi_array;
+            }
 		}
 	}
 

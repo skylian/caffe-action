@@ -106,8 +106,11 @@ void VideoDataLayer<Dtype>:: DataLayerSetUp(const vector<Blob<Dtype>*>& bottom, 
     if (this->num_rois_) {
         CHECK_EQ(top.size(), 3) << "There should be 3 tops when ROIs are given.";
         CHECK_EQ(num_segments, 1) << "Number of segments per video should be one when ROIs are given.";
-        top[2]->Reshape(batch_size, this->num_rois_, 5, 1);
-        this->prefetch_roi_.Reshape(batch_size, this->num_rois_, 5, 1);
+        vector<int> shape(2);
+        shape[0] = batch_size*this->num_rois_;
+        shape[1] = 5;
+        top[2]->Reshape(shape);
+        this->prefetch_roi_.Reshape(shape);
     }
     else {
     	CHECK_EQ(top.size(), 2) << "There should be 2 tops.";
@@ -192,35 +195,36 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
         if (this->num_rois_) {
         	boost::filesystem::path roi_path(lines_[lines_id_].first);
             string roi_file = roi_folder + roi_path.stem().string() + ".mat";
-            CHECK(ReadROI(roi_file, rois, offsets[0])) << "Error reading ROI file " << roi_file
-            		                                   << "at index " << offsets[0]
-            		                                   << ". Please check the log.";
-            LOG(INFO) << "Read " << lines_[lines_id_].first << " at " << offsets[0];
-            this->data_transformer_->Transform(datum, &(this->transformed_data_), &rois);
+            if (!ReadROI(roi_file, rois, offsets[0])) {
+                LOG(ERROR) << "Error reading ROI file " << roi_file
+            		       << "at index " << offsets[0];
+                item_id--;
+            } else {
+                this->data_transformer_->Transform(datum, &(this->transformed_data_), &rois);
 
-            Dtype *roi_top = this->prefetch_roi_.mutable_cpu_data() + this->prefetch_roi_.offset(item_id*this->num_rois_);
-            const Dtype *roi_data = rois.cpu_data();
-            int n = 0;
-            for (int p = 0; p < rois.count() && n < this->num_rois_-1; p+=rois.shape(1)) {
-            	int x1 = roi_data[p], y1 = roi_data[p+1], x2 = roi_data[p+2], y2 = roi_data[p+3];
-				if (std::min(x2-x1, y2-y1) >= 50) {
-					int c = this->prefetch_roi_.shape(1) * n;
-					roi_top[c] = item_id;
-					for (int i = 0; i < 4; ++i)
-						roi_top[c+i+1] = roi_data[p+i];
-					n++;
-				}
+                Dtype *roi_top = this->prefetch_roi_.mutable_cpu_data() + this->prefetch_roi_.offset(item_id*this->num_rois_);
+                const Dtype *roi_data = rois.cpu_data();
+                int n = 0;
+                for (int p = 0; p < rois.count() && n < this->num_rois_-1; p+=rois.shape(1)) {
+                	int x1 = roi_data[p], y1 = roi_data[p+1], x2 = roi_data[p+2], y2 = roi_data[p+3];
+	    			if (std::min(x2-x1, y2-y1) >= 50) {
+		    			int c = this->prefetch_roi_.shape(1) * n;
+			    		roi_top[c] = item_id;
+				    	for (int i = 0; i < 4; ++i)
+					    	roi_top[c+i+1] = roi_data[p+i];
+    					n++;
+	    			}
+                }
+                for (; n < this->num_rois_; ++n) {
+            	    int c = this->prefetch_roi_.shape(1) * n;
+                	roi_top[c] = item_id;
+	    			roi_top[c+1] = 0;
+		    		roi_top[c+2] = 0;
+			    	roi_top[c+3] = this->transformed_data_.shape(3)-1;
+				    roi_top[c+4] = this->transformed_data_.shape(2)-1;
+                }
             }
-            for (; n < this->num_rois_; ++n) {
-            	int c = this->prefetch_roi_.shape(1) * n;
-            	roi_top[c] = item_id;
-				roi_top[c+1] = 0;
-				roi_top[c+2] = 0;
-				roi_top[c+3] = this->transformed_data_.shape(3)-1;
-				roi_top[c+4] = this->transformed_data_.shape(2)-1;
-            }
-        }
-        else {
+        } else {
         	this->data_transformer_->Transform(datum, &(this->transformed_data_), NULL);
         }
 
