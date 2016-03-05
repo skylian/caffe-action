@@ -121,7 +121,9 @@ void MPIComm::DispatchJob(MPIJob &job) {
   }
 }
 void MPIComm::ThreadFunc(){
+#ifndef CPU_ONLY
   CUDA_CHECK(cudaSetDevice(Caffe::device_id()));
+#endif
   started_.store(true);
   MPIJob job;
   while (true){

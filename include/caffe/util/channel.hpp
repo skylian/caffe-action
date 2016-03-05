@@ -11,8 +11,6 @@
 #include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 #include <queue>
-#include "cuda.h"
-#include <cuda_runtime.h>
 
 using std::queue;
 using boost::mutex;
@@ -33,7 +31,6 @@ public:
   int count_;
   int dtype_size_;
   OperationType op_;
-  cudaStream_t stream_;
 };
 
 class MPIComm{

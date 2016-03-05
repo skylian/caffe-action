@@ -142,6 +142,14 @@ Caffe::Caffe()
   // because on exclusive mode GPUs it will cause program fail
   // Reason: no device id assigned at this time, all processes will try to access gpu 0.
   #endif
+
+  #ifdef USE_CUDNN
+    cudnn_mem_richness_ = 1;
+  #endif
+
+  #ifdef WITH_PYTHON_LAYER
+  py_tstate_ = NULL;
+  #endif
 }
 
 Caffe::~Caffe() {

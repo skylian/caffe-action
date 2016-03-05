@@ -16,6 +16,7 @@
 #include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/util/db.hpp"
+#include "caffe/util/rng.hpp"
 
 namespace caffe {
 
@@ -164,21 +165,40 @@ public:
 		return 2;
 	}
 
+
 protected:
 	virtual void InternalThreadEntry();
 
 #ifdef USE_MPI
 	inline virtual void advance_cursor() {
-		cursor_->Next();
-		if (!cursor_->valid()) {
-			DLOG(INFO) << "Restarting data prefetching from start.";
-			cursor_->SeekToFirst();
+		if (cur_input_mode_ == SEQUENCE) {
+			cursor_->Next();
+			if (!cursor_->valid()) {
+				DLOG(INFO) << "Restarting data prefetching from start.";
+				cursor_->SeekToFirst();
+
+				if (this->layer_param_.data_param().shuffle() == true){
+					LOG(INFO)<<"Entering shuffling mode after first epoch";
+					cur_input_mode_ = SHUFFLE;
+					shuffle(shuffle_key_pool_.begin(), shuffle_key_pool_.end());
+					shuffle_cursor_ = shuffle_key_pool_.begin();
+				}
+			}
+		}else if (cur_input_mode_ == SHUFFLE){
+			//NO OP
 		}
 	}
 #endif
 
 	shared_ptr<db::DB> db_;
 	shared_ptr<db::Cursor> cursor_;
+
+	enum InputMode{
+			SEQUENCE, SHUFFLE
+	};
+	InputMode cur_input_mode_;
+	vector<string> shuffle_key_pool_;
+	vector<string>::iterator shuffle_cursor_;
 };
 
 /**

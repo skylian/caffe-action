@@ -96,7 +96,7 @@ message NetParameter {
 // NOTE
 // Update the next available ID when you add a new SolverParameter field.
 //
-// SolverParameter next available ID: 37 (last added: iter_size)
+// SolverParameter next available ID: 38 (last added: richness)
 message SolverParameter {
   //////////////////////////////////////////////////////////////////////////////
   // Specifying the train and test networks
@@ -202,6 +202,10 @@ message SolverParameter {
 
   // If false, don't save a snapshot after training finishes.
   optional bool snapshot_after_train = 28 [default = true];
+
+  // Total memory allowed to be used for workspaces in cudnn's convolution, in MBs. default is 300MB.
+  // The framework will try to find the fastest setup given this limit.
+  optional int32 richness = 37 [default = 300];
 }
 
 // A message that stores the solver snapshots
@@ -291,7 +295,7 @@ message LayerParameter {
 
   // The blobs containing the numeric parameters of the layer.
   repeated BlobProto blobs = 7;
-  
+
   // Specifies on which bottoms the backpropagation should be skipped.
   // The size must be either 0 or equal to the number of bottoms.
   repeated bool propagate_down = 11;
@@ -386,8 +390,10 @@ message TransformationParameter {
   optional bool force_gray = 7 [default = false];
 
   //if set to true,
-  //instead use a fixed position cropping (center, left-up, left-down, right-up, right-down)
+  //instead using a fixed position cropping (center, left-up, left-down, right-up, right-down)
   optional bool fix_crop = 10 [default = false];
+  //turn on to use stronger augmentation
+  optional bool more_fix_crop = 15 [default = false];
 
   //if set to true, use multi-scale data augmentation
   optional bool multi_scale = 11 [default = false];
@@ -397,12 +403,12 @@ message TransformationParameter {
 
   // maximal tolerated aspect ratio mismatch in the ratio list
   optional int32 max_distort = 13 [default = 1];
-  
+
   //if set to true, it is optical flow field
-  optional bool is_flow = 14 [default = false];
-  optional bool has_flow = 15 [default = false];
-  optional int32 flow_point = 16 [default = 0];
-  optional int32 mean_jitter = 17 [default = 0];
+  optional bool is_flow = 16 [default = false];
+  optional bool has_flow = 17 [default = false];
+  optional int32 flow_point = 18 [default = 0];
+  optional int32 mean_jitter = 19 [default = 0];
 }
 
 // Message that stores parameters shared by loss layers
@@ -443,9 +449,18 @@ message ArgMaxParameter {
 message BNParameter {
   optional FillerParameter slope_filler = 1;
   optional FillerParameter bias_filler = 2;
-  optional bool moving_average = 3 [default = true];
-  optional float momentum = 4 [default = 0.9];
-  optional float eps = 5 [default = 1e-7];
+  optional float momentum = 3 [default = 0.9];
+  optional float eps = 4 [default = 1e-5];
+  // If true, will use the moving average mean and std for training and test.
+  // Will override the lr_param and freeze all the parameters.
+  // Make sure to initialize the layer properly with pretrained parameters.
+  optional bool frozen = 5 [default = false];
+  enum Engine {
+    DEFAULT = 0;
+    CAFFE = 1;
+    CUDNN = 2;
+  }
+  optional Engine engine = 6 [default = DEFAULT];
 }
 
 message ConcatParameter {
@@ -472,7 +487,7 @@ message ContrastiveLossParameter {
   // Hadsell paper. New models should probably use this version.
   // legacy_version = true uses (margin - d^2). This is kept to support /
   // reproduce existing models and results
-  optional bool legacy_version = 2 [default = false]; 
+  optional bool legacy_version = 2 [default = false];
 }
 
 message ConvolutionParameter {
@@ -529,6 +544,8 @@ message DataParameter {
   optional bool mirror = 6 [default = false];
   // Force the encoded image to have 3 color channels
   optional bool force_encoded_color = 9 [default = false];
+  // Enable within-shared shuffling
+  optional bool shuffle = 10 [default = false];
 }
 
 message DropoutParameter {
@@ -787,6 +804,9 @@ message PowerParameter {
 message PythonParameter {
   optional string module = 1;
   optional string layer = 2;
+
+  //param_str to be sent to the python layer
+  optional string param_str = 3;
 }
 
 // Message that stores parameters used by ReductionLayer

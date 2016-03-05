@@ -46,7 +46,7 @@ class Layer {
       #ifdef USE_MPI
       //If this is a gather layer, all it subsequent layer doesn't need gradient sync.
       //We will only change itself's property here,
-      //subsequent layers will be infered in the Net
+      //subsequent layers will be inferred in the Net
     if (is_gathering()){
         set_need_sync(false);
       }else{
@@ -303,6 +303,7 @@ class Layer {
    * If not supported, will halt the program with hints
    */
   inline virtual bool is_gathering() {return false;}
+  inline virtual bool is_scattering() {return false;}
   inline bool need_sync(){return need_sync_;}
   inline void set_need_sync(bool val){need_sync_ = val;}
   #endif

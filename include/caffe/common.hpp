@@ -27,6 +27,10 @@ do { \
   } while (0)
 #endif
 
+#ifdef WITH_PYTHON_LAYER
+#include <boost/python.hpp>
+#endif
+
 #include "caffe/util/device_alternate.hpp"
 
 // gflags 2.1 issue: namespace google was changed to gflags without warning.
@@ -197,12 +201,26 @@ class Caffe {
   inline static void set_remaining_sub_iter(int n){Get().remaining_sub_iter_ = n;}
 #endif
 
+#ifdef WITH_PYTHON_LAYER
+  inline static PyThreadState* py_tstate(){return Get().py_tstate_;}
+  inline static void set_py_tstate(PyThreadState* new_state){Get().py_tstate_ = new_state;}
+#endif
+
+#ifdef USE_CUDNN
+  inline static int cudnn_mem_richness(){return Get().cudnn_mem_richness_;}
+  inline static void set_cudnn_mem_richness(int richness){Get().cudnn_mem_richness_ = richness;}
+#endif
+
  protected:
 #ifndef CPU_ONLY
   cublasHandle_t cublas_handle_;
   curandGenerator_t curand_generator_;
 #endif
   shared_ptr<RNG> random_generator_;
+
+#ifdef USE_CUDNN
+  int cudnn_mem_richness_;
+#endif
 
 #ifdef USE_MPI
 
@@ -211,6 +229,10 @@ class Caffe {
   int mpi_all_rank_;
   int device_id_;
   int remaining_sub_iter_;
+#endif
+
+#ifdef WITH_PYTHON_LAYER
+  PyThreadState* py_tstate_;
 #endif
 
   Brew mode_;

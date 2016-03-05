@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include <boost/unordered_map.hpp>
+
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
 #include "caffe/common_layers.hpp"
@@ -228,31 +230,68 @@ protected:
  */
 template <typename Dtype>
 class CuDNNConvolutionLayer : public ConvolutionLayer<Dtype> {
-public:
-	explicit CuDNNConvolutionLayer(const LayerParameter& param)
-	: ConvolutionLayer<Dtype>(param), handles_setup_(false) {}
-	virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
-			const vector<Blob<Dtype>*>& top);
-	virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
-			const vector<Blob<Dtype>*>& top);
-	virtual ~CuDNNConvolutionLayer();
+ public:
+  explicit CuDNNConvolutionLayer(const LayerParameter& param)
+      : ConvolutionLayer<Dtype>(param), handles_setup_(false) {}
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual ~CuDNNConvolutionLayer();
 
-protected:
-	virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
-			const vector<Blob<Dtype>*>& top);
-	virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
-			const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+  static void RuntimeOptimize(size_t mem_limit);
 
-	bool handles_setup_;
-	cudnnHandle_t* handle_;
-	cudaStream_t*  stream_;
-	vector<cudnnTensorDescriptor_t> bottom_descs_, top_descs_;
-	cudnnTensorDescriptor_t    bias_desc_;
-	cudnnFilterDescriptor_t      filter_desc_;
-	vector<cudnnConvolutionDescriptor_t> conv_descs_;
-	int bottom_offset_, top_offset_, weight_offset_, bias_offset_;
-	size_t workspaceSizeInBytes;
-	void *workspace;
+ protected:
+  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+  void AdjustWorkSpaces();
+
+  bool handles_setup_;
+  cudnnHandle_t* handle_;
+  cudaStream_t*  stream_;
+  vector<cudnnTensorDescriptor_t> bottom_descs_, top_descs_;
+  cudnnTensorDescriptor_t    bias_desc_;
+  cudnnFilterDescriptor_t      filter_desc_;
+  vector<cudnnConvolutionDescriptor_t> conv_descs_;
+  int bottom_offset_, top_offset_, weight_offset_, bias_offset_;
+
+  // algorithms for forward and backwards convolutions
+  cudnnConvolutionFwdAlgo_t *fwd_algo_;
+  cudnnConvolutionBwdFilterAlgo_t *bwd_filter_algo_;
+  cudnnConvolutionBwdDataAlgo_t *bwd_data_algo_;
+
+  size_t *workspace_fwd_sizes_;
+  size_t *workspace_bwd_data_sizes_;
+  size_t *workspace_bwd_filter_sizes_;
+
+  /** We prefer using a series of managed memory blocks to a single memory pool
+   *  The latter approach is prone to problem and has issues in memory alignment
+   **/
+  size_t workspaceSizeInBytes_fwd;  // size of underlying storage
+  vector<shared_ptr<SyncedMemory> > workspaceData_fwd;  // underlying storage
+
+  size_t workspaceSizeInBytes_bwd;  // size of underlying storage
+  vector<shared_ptr<SyncedMemory> > workspaceData_bwd_filter;  // underlying storage
+  vector<shared_ptr<SyncedMemory> > workspaceData_bwd_data;  // underlying storage
+
+  vector<vector<int> > prev_bottom_shapes_;
+
+  struct PerfReg {
+      vector<vector<cudnnConvolutionFwdAlgoPerf_t> > fwd_perf;
+      vector<vector<cudnnConvolutionBwdFilterAlgoPerf_t> > bwd_filter_perf;
+      vector<vector<cudnnConvolutionBwdDataAlgoPerf_t> > bwd_data_perf;
+      vector<int> fwd_algo;
+      vector<int> bwd_filter_algo;
+      vector<int> bwd_data_algo;
+  };
+
+  PerfReg layer_perf_;
+
+  static boost::unordered_map<CuDNNConvolutionLayer*, PerfReg*>  perf_reg;
+  static bool need_optimize_;
 };
 #endif
 

@@ -1,19 +1,30 @@
 # Action Recognition with Deep Learning
 
+[![Build Status](https://travis-ci.org/yjxiong/caffe.svg?branch=action_recog)](https://travis-ci.org/yjxiong/caffe)
+
 This branch hosts the code for the technical report ["Towards Good Practices for Very Deep Two-stream ConvNets"](http://arxiv.org/abs/1507.02159), and more.
 
 ### Updates
-- Sep. 7, 2015
-  * New mechanism for parallel comminucation reduced parallel overhead.
-  * Batch normalization, courtesy of [@Cysu](https://github.com/Cysu).
+- Dec 23, 2015
+  * Refactored cudnn wrapper to control overall memory consumption. Will automatically find the best algorithm combination under memory constraint.
+- Dec 17, 2015
+  * cuDNN v4 support: faster convolution and batch normalization (around 20% performance gain).
+- Nov 22, 2015
+  * Now python layer can expose a `prefetch()` method, which will be run in parallel with network processing.
+
+[Full Change Log](CHANGELOG.md)
 
 ### Features
-- `VideoDataLayer` for inputing video data
+- `VideoDataLayer` for inputing video data.
 - Training on optical flow data. 
-- Data augmentation with fixed corner cropping and multi-scale cropping
+- Data augmentation with fixed corner cropping and multi-scale cropping.
 - Parallel training with multiple GPUs.
+- cuDNNv4 integration.
 
 ### Usage
+
+*See more in* [Wiki](https://github.com/yjxiong/caffe/wiki).
+
 Generally it's the same as the original caffe. Please see the original README. 
 Please see following instruction for accessing features above. More detailed documentation is on the way.
 
@@ -27,8 +38,11 @@ Please see following instruction for accessing features above. More detailed doc
   - Set `multi_scale` to `true` in `transform_param`
   - In `transform_param`, specify `scale_ratios` as a list of floats smaller than one, default is `[1, .875, .75, .65]`
   - In `transform_param`, specify `max_distort` to an integer, which will limit the aspect ratio distortion, default to `1`
+- cuDNN v4
+ - The cuDNN v4 wrapper has optimized engines for convolution and batch normalization.
+ - The solver protobuf config has a parameter `richness` which specifies the total GPU memory in MBs available to the cudnn convolution engine as workspaces. Default `richness` is 300 (300MB). Using this parameter you can control the GPU memory consumption of training, the system will find the best setup under the memory limit for you.
 - Training with multiple GPUs
-  - Requires OpenMPI > 1.8.5 ([Why?](https://www.open-mpi.org/faq/?category=runcuda#mpi-apis-no-cuda)). **Remember to compile your OpenMPI with option `--with-cuda`**
+  - Requires OpenMPI > 1.7.4 ([Why?](https://www.open-mpi.org/faq/?category=runcuda)). **Remember to compile your OpenMPI with option `--with-cuda`**
   - Specify list of GPU IDs to be used for training, in the solver protocol buffer definition, like `device_id: [0,1,2,3]`
   - Compile using cmake and use `mpirun` to launch caffe executable, like 
 ```bash
@@ -37,7 +51,6 @@ cmake .. -DUSE_MPI=ON
 make && make install
 mpirun -np 4 ./install/bin/caffe train --solver=<Your Solver File> [--weights=<Pretrained caffemodel>]
 ```
-
 **Note**: actual batch_size will be `num_device` times `batch_size` specified in network's prototxt.
 
 ### Working Examples
@@ -61,6 +74,23 @@ Its function should be forwarding the "data cursor" in your data layer for one s
 Contact 
 - [Limin Wang](http://wanglimin.github.io/)
 - [Yuanjun Xiong](http://personal.ie.cuhk.edu.hk/~xy012/)
+
+### Citation
+You are encouraged to also cite the following report if you find this repo helpful
+
+```
+@article{MultiGPUCaffe2015,
+  author    = {Limin Wang and
+               Yuanjun Xiong and
+               Zhe Wang and
+               Yu Qiao},
+  title     = {Towards Good Practices for Very Deep Two-Stream ConvNets},
+  journal   = {CoRR},
+  volume    = {abs/1507.02159},
+  year      = {2015},
+  url       = {http://arxiv.org/abs/1507.02159},
+}
+```
 
 ----
 Following is the original README of Caffe.

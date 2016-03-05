@@ -157,10 +157,12 @@ void VideoDataLayer<Dtype>::InternalThreadEntry(){
 	Blob<Dtype> rois;
 	const int max_length = *std::max_element(new_length_.begin(), new_length_.end());
 	const int lines_size = lines_.size();
-	vector<int> shape(2);
-    shape[0] = batch_size * this->num_rois_;
-    shape[1] = 5;
-    this->prefetch_roi_.Reshape(shape);
+	if (this->num_rois_) {
+		vector<int> shape(2);
+		shape[0] = batch_size * this->num_rois_;
+		shape[1] = 5;
+		this->prefetch_roi_.Reshape(shape);
+	}
 	for (int item_id = 0; item_id < batch_size; ++item_id){
 		CHECK_GT(lines_size, lines_id_);
 		vector<int> offsets;

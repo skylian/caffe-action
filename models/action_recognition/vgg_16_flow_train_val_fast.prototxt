@@ -1,4 +1,4 @@
-name: "CUHK_Action_SpatialNet"
+name: "CUHK_Action_TemporalNet"
 layer {
   name: "data"
   type: "VideoData"
